@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Emergency Dashboard - Indian Tourism Safety</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        .alert-high { animation: pulse 2s infinite; }
+        .alert-medium { animation: flash 3s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        @keyframes flash {
+            0%, 50%, 100% { background-color: #fee2e2; }
+            25%, 75% { background-color: #fef2f2; }
+        }
+        .status-active { color: #ef4444; }
+        .status-resolved { color: #10b981; }
+        .status-investigating { color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-blue-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas fa-shield-alt text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Police Emergency Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                        <span class="text-sm">Live Monitoring</span>
+                    </div>
+                    <div class="text-sm">
+                        <span id="currentTime"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Dashboard Stats -->
+    <section class="max-w-7xl mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Active Alerts -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-red-100 text-red-600">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Active Alerts</p>
+                        <p class="text-2xl font-bold text-gray-900" id="activeAlerts">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tourists Tracked -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Tourists Tracked</p>
+                        <p class="text-2xl font-bold text-gray-900" id="touristsTracked">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Time -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <i class="fas fa-clock text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Avg Response Time</p>
+                        <p class="text-2xl font-bold text-gray-900" id="responseTime">2.5 min</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resolved Today -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Resolved Today</p>
+                        <p class="text-2xl font-bold text-gray-900" id="resolvedToday">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Alerts Section -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-bell text-red-500 mr-2"></i>
+                        Emergency Alerts
+                    </h2>
+                    <div class="flex space-x-2">
+                        <button onclick="filterAlerts('all')" class="px-3 py-1 text-sm bg-gray-100 rounded-lg hover:bg-gray-200" id="filterAll">All</button>
+                        <button onclick="filterAlerts('high')" class="px-3 py-1 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200" id="filterHigh">High Priority</button>
+                        <button onclick="filterAlerts('active')" class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200" id="filterActive">Active</button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div id="alertsList" class="space-y-4">
+                    <!-- Alerts will be populated here -->
+                </div>
+                <div id="noAlerts" class="text-center py-8 text-gray-500 hidden">
+                    <i class="fas fa-check-circle text-4xl mb-4 text-green-500"></i>
+                    <p class="text-lg">No active emergency alerts</p>
+                    <p class="text-sm">All tourists are safe</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Map Section -->
+        <div class="bg-white rounded-lg shadow mb-8">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-map-marked-alt text-blue-500 mr-2"></i>
+                        Live Tourist Tracking Map
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="refreshMap()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                        </button>
+                        <button onclick="toggleHeatmap()" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                            <i class="fas fa-fire mr-1"></i>Heatmap
+                        </button>
+                        <select id="policeMapStyle" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                            <option value="roadmap">Roadmap</option>
+                            <option value="satellite">Satellite</option>
+                            <option value="hybrid">Hybrid</option>
+                            <option value="terrain">Terrain</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <!-- Map Controls Panel -->
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="showTourists" checked class="mr-2">
+                            <label>Show Tourists (<span id="touristCount">0</span>)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="showAlerts" checked class="mr-2">
+                            <label>Show Alerts (<span id="alertCount">0</span>)</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="showRoutes" class="mr-2">
+                            <label>Show Routes</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="showGeofences" checked class="mr-2">
+                            <label>Show Geofences</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map Container -->
+                <div id="map" class="h-96 w-full rounded-lg shadow-inner"></div>
+                
+                <!-- Map Statistics -->
+                <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div class="bg-blue-50 p-3 rounded">
+                        <div class="text-blue-600 font-semibold">Active Tourists</div>
+                        <div class="text-xl font-bold text-blue-800" id="mapActiveTourists">0</div>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded">
+                        <div class="text-red-600 font-semibold">Emergency Alerts</div>
+                        <div class="text-xl font-bold text-red-800" id="mapEmergencyAlerts">0</div>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded">
+                        <div class="text-yellow-600 font-semibold">Foreign Tourists</div>
+                        <div class="text-xl font-bold text-yellow-800" id="mapForeignTourists">0</div>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded">
+                        <div class="text-green-600 font-semibold">Safe Zones</div>
+                        <div class="text-xl font-bold text-green-800" id="mapSafeZones">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Activity Log -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-list text-green-500 mr-2"></i>
+                        Recent Activity
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <div id="activityLog" class="space-y-4">
+                        <!-- Activity items will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                        Quick Actions
+                    </h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <button onclick="broadcastAlert()" class="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition">
+                        <i class="fas fa-broadcast-tower mr-2"></i>
+                        Broadcast Emergency Alert
+                    </button>
+                    <button onclick="exportReport()" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-download mr-2"></i>
+                        Export Daily Report
+                    </button>
+                    <button onclick="viewAnalytics()" class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        View Analytics
+                    </button>
+                    <button onclick="manageOfficers()" class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-user-shield mr-2"></i>
+                        Manage Officers
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Alert Details Modal -->
+    <div id="alertModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl max-w-2xl w-full mx-4 max-h-full overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-bold text-red-600">Emergency Alert Details</h3>
+                    <button onclick="closeAlertModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="alertModalContent" class="p-6">
+                <!-- Alert details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Broadcast Alert Modal -->
+    <div id="broadcastModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl max-w-md w-full mx-4">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Broadcast Emergency Alert</h3>
+            </div>
+            <form id="broadcastForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Alert Type</label>
+                    <select name="type" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="weather">Weather Warning</option>
+                        <option value="security">Security Alert</option>
+                        <option value="traffic">Traffic Advisory</option>
+                        <option value="general">General Notice</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                    <textarea name="message" required rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Enter alert message..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Affected Area</label>
+                    <input type="text" name="area" required class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="e.g., Delhi, Mumbai, Goa">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">
+                        <i class="fas fa-broadcast-tower mr-2"></i>
+                        Send Alert
+                    </button>
+                    <button type="button" onclick="closeBroadcastModal()" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let alerts = [];
+        let currentFilter = 'all';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadInitialData();
+            
+            // Demo data for presentation
+            addDemoAlerts();
+            updateStats();
+            updateActivityLog();
+        });
+
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Police dashboard connected');
+                socket.emit('join_police');
+            });
+
+            socket.on('police_alert', (alert) => {
+                addAlert(alert);
+                playAlertSound();
+                showNotification(`New ${alert.severity} priority alert: ${alert.message}`, 'error');
+            });
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleString('en-IN');
+        }
+
+        function addAlert(alertData) {
+            alerts.unshift(alertData);
+            renderAlerts();
+            updateStats();
+            addToActivityLog(`New ${alertData.severity} priority alert received from ${alertData.userName}`);
+        }
+
+        function renderAlerts() {
+            const container = document.getElementById('alertsList');
+            const noAlertsDiv = document.getElementById('noAlerts');
+            
+            let filteredAlerts = alerts;
+            if (currentFilter === 'high') {
+                filteredAlerts = alerts.filter(a => a.severity === 'HIGH');
+            } else if (currentFilter === 'active') {
+                filteredAlerts = alerts.filter(a => a.status === 'ACTIVE');
+            }
+
+            if (filteredAlerts.length === 0) {
+                container.innerHTML = '';
+                noAlertsDiv.classList.remove('hidden');
+                return;
+            }
+
+            noAlertsDiv.classList.add('hidden');
+            container.innerHTML = filteredAlerts.map(alert => `
+                <div class="border rounded-lg p-4 ${alert.severity === 'HIGH' ? 'alert-high border-red-300 bg-red-50' : alert.severity === 'MEDIUM' ? 'alert-medium border-yellow-300 bg-yellow-50' : 'border-gray-300'}" onclick="showAlertDetails('${alert.id}')">
+                    <div class="flex items-start justify-between cursor-pointer">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                    alert.severity === 'HIGH' ? 'bg-red-100 text-red-800' :
+                                    alert.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }">${alert.severity}</span>
+                                <span class="ml-2 px-2 py-1 text-xs rounded-full ${
+                                    alert.status === 'ACTIVE' ? 'bg-red-100 text-red-800' :
+                                    alert.status === 'INVESTIGATING' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-green-100 text-green-800'
+                                }">${alert.status}</span>
+                                <span class="ml-2 text-sm text-gray-500">${alert.type}</span>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 mb-1">${alert.userName || 'Tourist'}</h4>
+                            <p class="text-gray-700 mb-2">${alert.message}</p>
+                            <div class="flex items-center text-sm text-gray-500">
+                                <i class="fas fa-clock mr-1"></i>
+                                <span>${new Date(alert.timestamp).toLocaleString('en-IN')}</span>
+                                ${alert.userPhone ? `<i class="fas fa-phone ml-4 mr-1"></i><span>${alert.userPhone}</span>` : ''}
+                                ${alert.location ? `<i class="fas fa-map-marker-alt ml-4 mr-1"></i><span>Location Available</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col space-y-2 ml-4">
+                            <button onclick="event.stopPropagation(); respondToAlert('${alert.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                <i class="fas fa-reply mr-1"></i>Respond
+                            </button>
+                            <button onclick="event.stopPropagation(); resolveAlert('${alert.id}')" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                                <i class="fas fa-check mr-1"></i>Resolve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterAlerts(type) {
+            currentFilter = type;
+            renderAlerts();
+            
+            // Update filter buttons
+            document.querySelectorAll('[id^="filter"]').forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
+            document.getElementById(`filter${type.charAt(0).toUpperCase() + type.slice(1)}`).classList.add('bg-blue-500', 'text-white');
+        }
+
+        function showAlertDetails(alertId) {
+            const alert = alerts.find(a => a.id === alertId);
+            if (!alert) return;
+
+            const modal = document.getElementById('alertModal');
+            const content = document.getElementById('alertModalContent');
+            
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Alert ID</label>
+                            <p class="text-sm text-gray-900">${alert.id}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Timestamp</label>
+                            <p class="text-sm text-gray-900">${new Date(alert.timestamp).toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Tourist Name</label>
+                            <p class="text-sm text-gray-900">${alert.userName || 'Unknown'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+                            <p class="text-sm text-gray-900">${alert.userPhone || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Alert Type</label>
+                            <p class="text-sm text-gray-900">${alert.type}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Severity</label>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                alert.severity === 'HIGH' ? 'bg-red-100 text-red-800' :
+                                alert.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                            }">${alert.severity}</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                        <p class="text-sm text-gray-900 bg-gray-50 p-3 rounded">${alert.message}</p>
+                    </div>
+                    
+                    ${alert.location ? `
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                            <div class="bg-gray-50 p-3 rounded">
+                                <p class="text-sm text-gray-900">Latitude: ${alert.location.latitude}</p>
+                                <p class="text-sm text-gray-900">Longitude: ${alert.location.longitude}</p>
+                                <button onclick="openMaps(${alert.location.latitude}, ${alert.location.longitude})" class="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
+                                    <i class="fas fa-map-marked-alt mr-1"></i>View on Map
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex gap-3">
+                        <button onclick="respondToAlert('${alert.id}')" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-reply mr-2"></i>Dispatch Response Team
+                        </button>
+                        <button onclick="resolveAlert('${alert.id}')" class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-check mr-2"></i>Mark Resolved
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alertModal').classList.add('hidden');
+        }
+
+        function respondToAlert(alertId) {
+            const alert = alerts.find(a => a.id === alertId);
+            if (alert) {
+                alert.status = 'INVESTIGATING';
+                renderAlerts();
+                addToActivityLog(`Response team dispatched for alert ${alertId}`);
+                showNotification('Response team dispatched successfully', 'success');
+                closeAlertModal();
+            }
+        }
+
+        function resolveAlert(alertId) {
+            const alert = alerts.find(a => a.id === alertId);
+            if (alert) {
+                alert.status = 'RESOLVED';
+                renderAlerts();
+                addToActivityLog(`Alert ${alertId} resolved successfully`);
+                showNotification('Alert marked as resolved', 'success');
+                updateStats();
+                closeAlertModal();
+            }
+        }
+
+        function updateStats() {
+            const activeCount = alerts.filter(a => a.status === 'ACTIVE').length;
+            const resolvedToday = alerts.filter(a => 
+                a.status === 'RESOLVED' && 
+                new Date(a.timestamp).toDateString() === new Date().toDateString()
+            ).length;
+            
+            document.getElementById('activeAlerts').textContent = activeCount;
+            document.getElementById('touristsTracked').textContent = Math.floor(Math.random() * 1500) + 500;
+            document.getElementById('resolvedToday').textContent = resolvedToday;
+        }
+
+        function updateActivityLog() {
+            const log = document.getElementById('activityLog');
+            const activities = [
+                'System monitoring started',
+                'Tourist tracking activated for 1247 users',
+                'Daily safety report generated',
+                'Emergency response protocols updated'
+            ];
+            
+            log.innerHTML = activities.map((activity, index) => `
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
+                    <div>
+                        <p class="text-sm text-gray-900">${activity}</p>
+                        <p class="text-xs text-gray-500">${new Date(Date.now() - index * 300000).toLocaleTimeString('en-IN')}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addToActivityLog(activity) {
+            const log = document.getElementById('activityLog');
+            const newActivity = `
+                <div class="flex items-start">
+                    <div class="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
+                    <div>
+                        <p class="text-sm text-gray-900">${activity}</p>
+                        <p class="text-xs text-gray-500">${new Date().toLocaleTimeString('en-IN')}</p>
+                    </div>
+                </div>
+            `;
+            log.insertAdjacentHTML('afterbegin', newActivity);
+        }
+
+        function broadcastAlert() {
+            document.getElementById('broadcastModal').classList.remove('hidden');
+        }
+
+        function closeBroadcastModal() {
+            document.getElementById('broadcastModal').classList.add('hidden');
+            document.getElementById('broadcastForm').reset();
+        }
+
+        document.getElementById('broadcastForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            // Simulate broadcast
+            addToActivityLog(`Emergency alert broadcasted: ${formData.get('message')} (${formData.get('area')})`);
+            showNotification('Emergency alert broadcasted successfully', 'success');
+            closeBroadcastModal();
+        });
+
+        function exportReport() {
+            showNotification('Daily report exported successfully', 'success');
+            addToActivityLog('Daily safety report exported');
+        }
+
+        function viewAnalytics() {
+            showNotification('Analytics dashboard opened', 'info');
+        }
+
+        function manageOfficers() {
+            showNotification('Officer management panel opened', 'info');
+        }
+
+        function openMaps(lat, lng) {
+            window.open(`https://maps.google.com?q=${lat},${lng}`, '_blank');
+        }
+
+        function playAlertSound() {
+            // Create audio context for alert sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 
+                type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'success' ? 'fa-check-circle' : 
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        // Map-specific functions for police dashboard
+        function refreshMap() {
+            if (typeof loadTouristLocations === 'function') {
+                loadTouristLocations();
+                loadEmergencyAlerts();
+                updateMapStatistics();
+                showNotification('Map refreshed successfully', 'success');
+            }
+        }
+
+        function toggleHeatmap() {
+            // Toggle heatmap visualization
+            showNotification('Heatmap toggled', 'info');
+        }
+
+        function updateMapStatistics() {
+            document.getElementById('mapActiveTourists').textContent = touristMarkers.size;
+            document.getElementById('mapEmergencyAlerts').textContent = alertMarkers.size;
+            document.getElementById('mapForeignTourists').textContent = Array.from(touristMarkers.values()).filter(m => m.userType === 'foreign_tourist').length;
+            document.getElementById('mapSafeZones').textContent = geofences.size;
+            
+            document.getElementById('touristCount').textContent = touristMarkers.size;
+            document.getElementById('alertCount').textContent = alertMarkers.size;
+        }
+
+        // Map control event listeners
+        document.getElementById('showTourists').addEventListener('change', (e) => {
+            touristMarkers.forEach(marker => marker.setVisible(e.target.checked));
+        });
+
+        document.getElementById('showAlerts').addEventListener('change', (e) => {
+            alertMarkers.forEach(marker => marker.setVisible(e.target.checked));
+        });
+
+        document.getElementById('showRoutes').addEventListener('change', (e) => {
+            routePolylines.forEach(polyline => polyline.setVisible(e.target.checked));
+        });
+
+        document.getElementById('showGeofences').addEventListener('change', (e) => {
+            geofences.forEach(({circle, marker}) => {
+                circle.setVisible(e.target.checked);
+                marker.setVisible(e.target.checked);
+            });
+        });
+
+        document.getElementById('policeMapStyle').addEventListener('change', (e) => {
+            if (map) {
+                map.setMapTypeId(e.target.value);
+            }
+        });
+
+        function addDemoAlerts() {
+            const demoAlerts = [
+                {
+                    id: 'DEMO001',
+                    userId: 'user123',
+                    userName: 'Raj Patel',
+                    userPhone: '+91-9876543210',
+                    type: 'UNUSUAL_MOVEMENT',
+                    message: 'Tourist has deviated significantly from planned route near Manali',
+                    location: { latitude: 32.2432, longitude: 77.1892 },
+                    timestamp: new Date(Date.now() - 300000).toISOString(),
+                    severity: 'HIGH',
+                    status: 'ACTIVE'
+                },
+                {
+                    id: 'DEMO002',
+                    userId: 'user456',
+                    userName: 'Priya Sharma',
+                    userPhone: '+91-8765432109',
+                    type: 'EMERGENCY',
+                    message: 'Manual SOS button pressed - immediate assistance required',
+                    location: { latitude: 15.2993, longitude: 74.1240 },
+                    timestamp: new Date(Date.now() - 600000).toISOString(),
+                    severity: 'HIGH',
+                    status: 'INVESTIGATING'
+                },
+                {
+                    id: 'DEMO003',
+                    userId: 'user789',
+                    userName: 'John Smith',
+                    userPhone: '+1-555-123-4567',
+                    type: 'OFF_RADAR',
+                    message: 'Tourist location not updated for over 2 hours in remote area',
+                    location: { latitude: 34.1526, longitude: 77.5771 },
+                    timestamp: new Date(Date.now() - 900000).toISOString(),
+                    severity: 'MEDIUM',
+                    status: 'RESOLVED'
+                }
+            ];
+            
+            alerts = demoAlerts;
+            renderAlerts();
+        }
+
+        function loadInitialData() {
+            // Simulate loading initial data
+            setTimeout(() => {
+                updateStats();
+            }, 1000);
+        }
+    </script>
+    <script src="maps.js"></script>
+    <script src="fallback-map.js"></script>
+    <!-- Google Maps will fallback to OpenStreetMap if API key is not available -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap&libraries=geometry,visualization"
+            onerror="console.log('Google Maps failed to load, using fallback'); initFallbackMap();"></script>
+</body>
+</html>

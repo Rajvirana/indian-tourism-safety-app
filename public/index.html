@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Tourism & Safety App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .sos-btn {
+            background: linear-gradient(45deg, #ff4757, #ff3742);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
+        .language-selector {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .offline-indicator {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1000;
+            background: #f39c12;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <select id="languageSelect" class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="en">English</option>
+            <option value="hi">हिंदी</option>
+            <option value="bn">বাংলা</option>
+            <option value="te">తెలుగు</option>
+            <option value="mr">मराठी</option>
+            <option value="ta">தமிழ்</option>
+            <option value="gu">ગુજરાતી</option>
+            <option value="kn">ಕನ್ನಡ</option>
+            <option value="ml">മലയാളം</option>
+            <option value="pa">ਪੰਜਾਬੀ</option>
+            <option value="or">ଓଡ଼ିଆ</option>
+            <option value="as">অসমীয়া</option>
+        </select>
+    </div>
+
+    <!-- Offline Indicator -->
+    <div id="offlineIndicator" class="offline-indicator">
+        <i class="fas fa-wifi-slash mr-2"></i>
+        <span data-translate="offline_mode">Offline Mode Active</span>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <h2 class="text-2xl font-bold text-gray-800" data-translate="loading">Loading...</h2>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="gradient-bg shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <h1 class="text-white text-xl font-bold">
+                                <i class="fas fa-map-marked-alt mr-2"></i>
+                                <span data-translate="app_name">Indian Tourism & Safety</span>
+                            </h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="profileBtn" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium hidden">
+                            <i class="fas fa-user mr-1"></i>
+                            <span data-translate="profile">Profile</span>
+                        </button>
+                        <button id="logoutBtn" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium hidden">
+                            <i class="fas fa-sign-out-alt mr-1"></i>
+                            <span data-translate="logout">Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Login/Register Form -->
+        <div id="authContainer" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <div class="text-center">
+                    <h2 class="mt-6 text-3xl font-extrabold text-gray-900" data-translate="welcome">
+                        Welcome to Indian Tourism & Safety
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600" data-translate="auth_subtitle">
+                        Your verified travel companion for safe exploration
+                    </p>
+                </div>
+                
+                <!-- Auth Toggle -->
+                <div class="flex bg-gray-200 rounded-lg p-1 mb-6">
+                    <button id="loginTab" class="flex-1 py-2 px-4 rounded-lg bg-white shadow text-blue-600 font-medium">
+                        <span data-translate="login">Login</span>
+                    </button>
+                    <button id="registerTab" class="flex-1 py-2 px-4 rounded-lg text-gray-600 font-medium">
+                        <span data-translate="register">Register</span>
+                    </button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <input type="email" id="loginEmail" required
+                               class="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Email address">
+                    </div>
+                    <div>
+                        <input type="password" id="loginPassword" required
+                               class="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Password">
+                    </div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <span data-translate="sign_in">Sign In</span>
+                    </button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="space-y-6 hidden">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="registerName" required
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Full Name">
+                        <input type="email" id="registerEmail" required
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Email">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="tel" id="registerPhone" required
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Phone Number">
+                        <input type="password" id="registerPassword" required
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Password">
+                    </div>
+                    <div>
+                        <select id="userType" required
+                                class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select User Type</option>
+                            <option value="indian_citizen">Indian Citizen</option>
+                            <option value="nri">NRI (Non-Resident Indian)</option>
+                            <option value="foreign_tourist">Foreign Tourist</option>
+                        </select>
+                    </div>
+                    <div id="identityFields">
+                        <input type="text" id="aadharNumber"
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 mb-4"
+                               placeholder="Aadhar Number (for Indian Citizens)">
+                        <input type="text" id="passportNumber"
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Passport Number (for NRI/Foreign Tourists)">
+                    </div>
+                    <div>
+                        <input type="tel" id="emergencyContact" required
+                               class="appearance-none rounded-lg block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Emergency Contact Number">
+                    </div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <span data-translate="create_account">Create Account</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard" class="hidden">
+            <!-- Hero Section -->
+            <section class="gradient-bg text-white py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h1 class="text-4xl md:text-6xl font-bold mb-6" data-translate="explore_india">
+                        Explore India Safely
+                    </h1>
+                    <p class="text-xl md:text-2xl mb-8 opacity-90" data-translate="hero_subtitle">
+                        Discover amazing places with verified identity and real-time safety tracking
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button id="exploreBtn" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                            <i class="fas fa-compass mr-2"></i>
+                            <span data-translate="start_exploring">Start Exploring</span>
+                        </button>
+                        <button id="trackingBtn" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            <span data-translate="enable_tracking">Enable Tracking</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Feature Cards -->
+            <section class="py-16 bg-gray-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-gray-900 mb-4" data-translate="features_title">
+                            Your Travel Companion Features
+                        </h2>
+                        <p class="text-lg text-gray-600" data-translate="features_subtitle">
+                            Everything you need for a safe and memorable journey
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <!-- QR Verification -->
+                        <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                                <i class="fas fa-qrcode text-blue-600 text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2" data-translate="qr_verification">QR Verification</h3>
+                            <p class="text-gray-600" data-translate="qr_description">Verified identity with Aadhar/Passport linked QR codes</p>
+                        </div>
+
+                        <!-- Live Tracking -->
+                        <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                                <i class="fas fa-satellite-dish text-green-600 text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2" data-translate="live_tracking">Live Tracking</h3>
+                            <p class="text-gray-600" data-translate="tracking_description">Real-time location sharing with family and automatic SOS</p>
+                        </div>
+
+                        <!-- Smart Recommendations -->
+                        <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+                                <i class="fas fa-brain text-purple-600 text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2" data-translate="smart_recommendations">Smart Recommendations</h3>
+                            <p class="text-gray-600" data-translate="recommendations_description">AI-powered suggestions based on weather, cost, and preferences</p>
+                        </div>
+
+                        <!-- Multilingual Support -->
+                        <div class="bg-white rounded-xl p-6 shadow-lg card-hover">
+                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
+                                <i class="fas fa-language text-orange-600 text-xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-2" data-translate="multilingual">Multilingual</h3>
+                            <p class="text-gray-600" data-translate="multilingual_description">Support for 12+ Indian languages with accessibility features</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Tracking Map Section -->
+            <section class="py-16 bg-gray-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-gray-900 mb-4">
+                            <i class="fas fa-map-marked-alt text-blue-500 mr-2"></i>
+                            Live Tourist Tracking Map
+                        </h2>
+                        <p class="text-lg text-gray-600">Real-time location tracking and safety monitoring</p>
+                    </div>
+                    
+                    <!-- Map Controls -->
+                    <div class="bg-white rounded-xl shadow-lg mb-6 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex items-center space-x-4">
+                                <button id="myLocationBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                    <i class="fas fa-crosshairs mr-2"></i>My Location
+                                </button>
+                                <button id="trackingToggleBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                                    <i class="fas fa-satellite-dish mr-2"></i>Enable Tracking
+                                </button>
+                                <button id="shareLocationBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                                    <i class="fas fa-share-alt mr-2"></i>Share Location
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-gray-600">Map Style:</span>
+                                <select id="mapStyleSelect" class="border border-gray-300 rounded px-3 py-1 text-sm">
+                                    <option value="roadmap">Roadmap</option>
+                                    <option value="satellite">Satellite</option>
+                                    <option value="hybrid">Hybrid</option>
+                                    <option value="terrain">Terrain</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Map Container -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div id="map" class="h-96 w-full"></div>
+                    </div>
+                    
+                    <!-- Map Legend -->
+                    <div class="bg-white rounded-xl shadow-lg mt-6 p-6">
+                        <h3 class="text-lg font-semibold mb-4">Map Legend</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-blue-500 mr-2 flex items-center justify-center text-white text-xs">📍</div>
+                                <span>Active Tourists</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-red-500 mr-2 flex items-center justify-center text-white text-xs">🚨</div>
+                                <span>Emergency Alerts</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-yellow-500 mr-2 flex items-center justify-center text-white text-xs">🌍</div>
+                                <span>Foreign Tourists</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 rounded-full bg-green-500 mr-2 flex items-center justify-center text-white text-xs">🛡️</div>
+                                <span>Safe Zones</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="py-16">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-bold text-gray-900 mb-4" data-translate="quick_actions">Quick Actions</h2>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <button id="placesBtn" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-blue-500">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-map-marked-alt text-blue-500 text-2xl mr-4"></i>
+                                <h3 class="text-xl font-semibold" data-translate="explore_places">Explore Places</h3>
+                            </div>
+                            <p class="text-gray-600" data-translate="places_description">Discover top-rated destinations and hidden gems</p>
+                        </button>
+
+                        <button id="festivalsBtn" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-green-500">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-calendar-alt text-green-500 text-2xl mr-4"></i>
+                                <h3 class="text-xl font-semibold" data-translate="festivals">Festivals & Events</h3>
+                            </div>
+                            <p class="text-gray-600" data-translate="festivals_description">Find cultural celebrations and local events</p>
+                        </button>
+
+                        <button id="itineraryBtn" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-purple-500">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-route text-purple-500 text-2xl mr-4"></i>
+                                <h3 class="text-xl font-semibold" data-translate="plan_itinerary">Plan Itinerary</h3>
+                            </div>
+                            <p class="text-gray-600" data-translate="itinerary_description">Create personalized travel plans</p>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Modals and Content Sections -->
+        <div id="modalContainer"></div>
+    </div>
+
+    <!-- Floating SOS Button -->
+    <button id="sosBtn" class="floating-btn sos-btn w-16 h-16 rounded-full text-white shadow-2xl hidden">
+        <i class="fas fa-exclamation-triangle text-2xl"></i>
+    </button>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-8 max-w-md mx-4">
+            <div class="text-center">
+                <h3 class="text-2xl font-bold mb-4" data-translate="your_qr_code">Your Verification QR Code</h3>
+                <div id="qrCodeContainer" class="mb-4"></div>
+                <p class="text-gray-600 mb-6" data-translate="qr_instructions">Show this QR code for identity verification</p>
+                <button id="closeQrModal" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    <span data-translate="close">Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="maps.js"></script>
+    <script src="fallback-map.js"></script>
+    <script src="app.js"></script>
+    <!-- Google Maps will fallback to OpenStreetMap if API key is not available -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap&libraries=geometry" 
+            onerror="console.log('Google Maps failed to load, using fallback'); initFallbackMap();"></script>
+</body>
+</html>
