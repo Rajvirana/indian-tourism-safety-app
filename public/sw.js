@@ -22,6 +22,12 @@ self.addEventListener('install', event => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', event => {
+    // Skip caching for POST requests and API calls
+    if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+    
     event.respondWith(
         caches.match(event.request)
             .then(response => {
@@ -39,13 +45,16 @@ self.addEventListener('fetch', event => {
                         return response;
                     }
                     
-                    // Clone the response because it's a stream
-                    const responseToCache = response.clone();
-                    
-                    caches.open(CACHE_NAME)
-                        .then(cache => {
-                            cache.put(event.request, responseToCache);
-                        });
+                    // Only cache GET requests
+                    if (event.request.method === 'GET') {
+                        // Clone the response because it's a stream
+                        const responseToCache = response.clone();
+                        
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, responseToCache);
+                            });
+                    }
                     
                     return response;
                 }).catch(() => {
