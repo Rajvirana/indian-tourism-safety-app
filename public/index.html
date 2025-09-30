@@ -115,13 +115,15 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
         .chatbot-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #000000;
             padding: 16px;
             border-radius: 15px 15px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border: 1px solid #dee2e6;
+            font-weight: 600;
         }
         .chatbot-messages {
             flex: 1;
@@ -146,10 +148,14 @@
             background: #e5e7eb;
             margin-left: auto;
             text-align: right;
+            color: #000000;
+            font-weight: 500;
         }
         .message.bot {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
+            color: #000000;
+            border: 1px solid #e9ecef;
+            font-weight: 500;
         }
         .quick-replies {
             display: flex;
@@ -165,6 +171,8 @@
             font-size: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
+            color: #000000;
+            font-weight: 500;
         }
         .quick-reply:hover {
             background: #667eea;
@@ -177,6 +185,486 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Glassmorphism Card Backgrounds */
+        .glass-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                0 4px 16px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-12px) scale(1.02);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.2),
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                0 0 40px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Animated Background Gradients */
+        .explore-places-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            animation: placesGradient 8s ease infinite;
+            z-index: -1;
+        }
+        
+        .festivals-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #4facfe 100%);
+            animation: festivalsGradient 6s ease infinite;
+            z-index: -1;
+        }
+        
+        .itinerary-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 50%, #d299c2 100%);
+            animation: itineraryGradient 10s ease infinite;
+            z-index: -1;
+        }
+        
+        .ai-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #43e97b 100%);
+            animation: aiGradient 7s ease infinite;
+            z-index: -1;
+        }
+        
+        /* Background Gradient Animations */
+        @keyframes placesGradient {
+            0%, 100% { 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                filter: hue-rotate(0deg) saturate(1);
+            }
+            33% { 
+                background: linear-gradient(135deg, #764ba2 0%, #f093fb 50%, #667eea 100%);
+                filter: hue-rotate(30deg) saturate(1.2);
+            }
+            66% { 
+                background: linear-gradient(135deg, #f093fb 0%, #667eea 50%, #764ba2 100%);
+                filter: hue-rotate(-20deg) saturate(0.9);
+            }
+        }
+        
+        @keyframes festivalsGradient {
+            0%, 100% { 
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #4facfe 100%);
+                filter: hue-rotate(0deg) saturate(1);
+            }
+            50% { 
+                background: linear-gradient(135deg, #4facfe 0%, #f093fb 50%, #f5576c 100%);
+                filter: hue-rotate(45deg) saturate(1.3);
+            }
+        }
+        
+        @keyframes itineraryGradient {
+            0%, 100% { 
+                background: linear-gradient(135deg, #a8edea 0%, #fed6e3 50%, #d299c2 100%);
+                filter: hue-rotate(0deg) saturate(1);
+            }
+            50% { 
+                background: linear-gradient(135deg, #fed6e3 0%, #d299c2 50%, #a8edea 100%);
+                filter: hue-rotate(-30deg) saturate(1.1);
+            }
+        }
+        
+        @keyframes aiGradient {
+            0%, 100% { 
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #43e97b 100%);
+                filter: hue-rotate(0deg) saturate(1);
+            }
+            50% { 
+                background: linear-gradient(135deg, #43e97b 0%, #4facfe 50%, #00f2fe 100%);
+                filter: hue-rotate(60deg) saturate(1.2);
+            }
+        }
+        
+        /* Glassmorphism Pattern Animations */
+        .glass-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 24px;
+            opacity: 0.1;
+            z-index: 1;
+        }
+        
+        .places-animation {
+            animation: glassFloatPattern 6s ease-in-out infinite;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="white"/><circle cx="80" cy="20" r="2" fill="white"/><circle cx="20" cy="80" r="2" fill="white"/><circle cx="80" cy="80" r="2" fill="white"/><circle cx="50" cy="50" r="3" fill="white"/></svg>');
+            background-size: 60px 60px;
+        }
+        
+        .festivals-animation {
+            animation: glassSparklePattern 4s ease-in-out infinite;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,10 60,35 85,35 65,55 75,85 50,70 25,85 35,55 15,35 40,35" fill="white"/></svg>');
+            background-size: 50px 50px;
+        }
+        
+        .itinerary-animation {
+            animation: glassSlidePattern 8s ease-in-out infinite;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M25,25 L75,25 L75,75 L25,75 Z" fill="none" stroke="white" stroke-width="2"/><circle cx="30" cy="30" r="3" fill="white"/><circle cx="70" cy="30" r="3" fill="white"/><circle cx="30" cy="70" r="3" fill="white"/><circle cx="70" cy="70" r="3" fill="white"/></svg>');
+            background-size: 70px 70px;
+        }
+        
+        .ai-animation {
+            animation: glassPulsePattern 3s ease-in-out infinite;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="10" y="10" width="15" height="15" fill="white" rx="2"/><rect x="35" y="10" width="15" height="15" fill="white" rx="2"/><rect x="60" y="10" width="15" height="15" fill="white" rx="2"/><rect x="10" y="35" width="15" height="15" fill="white" rx="2"/><rect x="35" y="35" width="15" height="15" fill="white" rx="2"/></svg>');
+            background-size: 45px 45px;
+        }
+        
+        @keyframes glassFloatPattern {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg) scale(1);
+                opacity: 0.08;
+            }
+            50% { 
+                transform: translateY(-8px) rotate(1deg) scale(1.02);
+                opacity: 0.15;
+            }
+        }
+        
+        @keyframes glassSparklePattern {
+            0%, 100% { 
+                transform: scale(1) rotate(0deg);
+                opacity: 0.1;
+            }
+            25% { 
+                transform: scale(1.05) rotate(90deg);
+                opacity: 0.2;
+            }
+            50% { 
+                transform: scale(1.1) rotate(180deg);
+                opacity: 0.15;
+            }
+            75% { 
+                transform: scale(1.05) rotate(270deg);
+                opacity: 0.2;
+            }
+        }
+        
+        @keyframes glassSlidePattern {
+            0% { 
+                transform: translateX(-15px) translateY(0px);
+                opacity: 0.08;
+            }
+            50% { 
+                transform: translateX(15px) translateY(-5px);
+                opacity: 0.18;
+            }
+            100% { 
+                transform: translateX(-15px) translateY(0px);
+                opacity: 0.08;
+            }
+        }
+        
+        @keyframes glassPulsePattern {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.1;
+            }
+            50% { 
+                transform: scale(1.08);
+                opacity: 0.2;
+            }
+        }
+        
+        /* Glass Icon Container */
+        .glass-icon {
+            background: rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover .glass-icon {
+            background: rgba(255, 255, 255, 0.25) !important;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+        
+        /* Festival Modal Glassmorphism Styles */
+        .festival-modal-backdrop {
+            backdrop-filter: blur(8px);
+            animation: fadeInBackdrop 0.3s ease-out;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+        }
+        
+        .glassmorphism-modal {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 60px rgba(0, 0, 0, 0.3),
+                0 10px 30px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transform: scale(0.95) translateY(30px);
+            opacity: 0;
+            transition: all 0.3s ease-out;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .glassmorphism-modal.modal-animate-in {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        
+        .glassmorphism-modal.modal-animate-out {
+            transform: scale(0.95) translateY(-20px);
+            opacity: 0;
+        }
+        
+        .glassmorphism-modal-list {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Festival Banner Image */
+        .festival-banner-image {
+            filter: brightness(0.8) contrast(1.1);
+        }
+        
+        /* Festival Title Animation */
+        .festival-title {
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            0% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+            100% { text-shadow: 0 0 30px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 255, 255, 0.2); }
+        }
+        
+        /* Glass Close Button */
+        .glass-close-button {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .glass-close-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Glass Info Cards */
+        .glass-info-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-info-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Activity Pills */
+        .activity-pill {
+            background: rgba(255, 193, 7, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(255, 193, 7, 0.1);
+        }
+        
+        .activity-pill:hover {
+            background: rgba(255, 193, 7, 0.25);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 15px rgba(255, 193, 7, 0.2);
+        }
+        
+        /* Place Pills */
+        .place-pill {
+            background: rgba(239, 68, 68, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.1);
+        }
+        
+        .place-pill:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 15px rgba(239, 68, 68, 0.2);
+        }
+        
+        /* Festival Modal Body */
+        .festival-modal-body {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+        }
+        
+        .festival-modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .festival-modal-body::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        .festival-modal-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .festival-modal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Festival Card Clickable */
+        .festival-card-clickable {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .festival-card-clickable::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+            z-index: 1;
+        }
+        
+        .festival-card-clickable:hover::before {
+            transform: translateX(100%);
+        }
+        
+        /* Line Clamp for Text Truncation */
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* Backdrop Animation */
+        @keyframes fadeInBackdrop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .glassmorphism-modal {
+                margin: 10px;
+                max-height: 90vh;
+            }
+            
+            .festival-title {
+                font-size: 2.5rem;
+            }
+            
+            .glass-info-card {
+                padding: 16px;
+            }
+            
+            .activity-pill, .place-pill {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+        
+        /* Ensure body can scroll */
+        body {
+            overflow: auto !important;
+        }
+        
+        /* Fix any potential scroll locks */
+        html {
+            overflow: auto !important;
         }
         .sos-btn {
             background: linear-gradient(45deg, #ff4757, #ff3742);
@@ -540,44 +1028,80 @@
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <section class="py-16">
+            <!-- Explore India's Wonders -->
+            <section class="py-24 bg-gradient-to-br from-blue-50 via-white to-purple-50">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="text-center mb-12">
-                        <h2 class="text-3xl font-bold text-gray-900 mb-4" data-translate="quick_actions">Quick Actions</h2>
-                        <p class="text-lg text-gray-600">Explore everything India has to offer</p>
+                    <div class="text-center mb-20">
+                        <h2 class="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8 tracking-tight leading-tight">
+                            Explore India's Wonders
+                        </h2>
+                        <p class="text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed font-medium" style="color: #374151; line-height: 1.8;">
+                            Discover breathtaking destinations, immerse in rich culture, and create memories that last a lifetime
+                        </p>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <button id="placesBtn" onclick="loadPlaces()" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-blue-500">
-                            <div class="flex items-center mb-4">
-                                <i class="fas fa-map-marked-alt text-blue-500 text-2xl mr-4"></i>
-                                <h3 class="text-xl font-semibold" data-translate="explore_places">Explore Places</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <!-- Explore Places Card -->
+                        <button id="placesBtn" onclick="loadPlaces()" class="group glass-card explore-places-bg h-80">
+                            <!-- Animated Background Pattern -->
+                            <div class="glass-pattern places-animation"></div>
+                            
+                            <div class="absolute top-6 left-6 z-20">
+                                <div class="w-16 h-16 glass-icon rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-map-marked-alt text-white text-2xl"></i>
+                                </div>
                             </div>
-                            <p class="text-gray-600" data-translate="places_description">Discover top-rated destinations and hidden gems</p>
+                            <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+                                <h3 class="text-3xl font-bold mb-4 text-white group-hover:text-blue-200 transition-colors">Explore Places</h3>
+                                <p class="text-lg leading-relaxed text-white opacity-90">Discover Jaipur's Pink City, Mumbai's Gateway of India, Kerala's backwaters, and incredible destinations</p>
+                            </div>
                         </button>
 
-                        <button id="festivalsBtn" onclick="loadFestivals()" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-green-500">
-                            <div class="flex items-center mb-4">
-                                <i class="fas fa-calendar-alt text-green-500 text-2xl mr-4"></i>
-                                <h3 class="text-xl font-semibold" data-translate="festivals">Festivals & Events</h3>
+                        <!-- Festivals & Events Card -->
+                        <button id="festivalsBtn" onclick="loadFestivals()" class="group glass-card festivals-bg h-80">
+                            <!-- Animated Background Pattern -->
+                            <div class="glass-pattern festivals-animation"></div>
+                            
+                            <div class="absolute top-6 left-6 z-20">
+                                <div class="w-16 h-16 glass-icon rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-calendar-alt text-white text-2xl"></i>
+                                </div>
                             </div>
-                            <p class="text-gray-600" data-translate="festivals_description">Find cultural celebrations and local events</p>
+                            <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+                                <h3 class="text-3xl font-bold mb-4 text-white group-hover:text-pink-200 transition-colors">Festivals & Events</h3>
+                                <p class="text-lg leading-relaxed text-white opacity-90">Experience Diwali lights, Holi colors, Durga Puja celebrations, and India's magical festivals</p>
+                            </div>
                         </button>
 
-                        <button id="itineraryBtn" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-purple-500">
-                            <div class="flex items-center mb-4">
-                                <i class="fas fa-route text-purple-500 text-2xl mr-4"></i>
-                                <h3 class="text-xl font-semibold" data-translate="plan_itinerary">Plan Itinerary</h3>
+                        <!-- Plan Itinerary Card -->
+                        <button id="itineraryBtn" class="group glass-card itinerary-bg h-80">
+                            <!-- Animated Background Pattern -->
+                            <div class="glass-pattern itinerary-animation"></div>
+                            
+                            <div class="absolute top-6 left-6 z-20">
+                                <div class="w-16 h-16 glass-icon rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-route text-white text-2xl"></i>
+                                </div>
                             </div>
-                            <p class="text-gray-600" data-translate="itinerary_description">Create personalized travel plans</p>
+                            <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+                                <h3 class="text-3xl font-bold mb-4 text-white group-hover:text-purple-200 transition-colors">Plan Your Adventure</h3>
+                                <p class="text-lg leading-relaxed text-white opacity-90">Create customized itineraries for Golden Triangle, Kerala tours, Rajasthan circuits, and dream journeys</p>
+                            </div>
                         </button>
 
-                        <button id="smartRecommendationsBtn" onclick="loadSmartRecommendations()" class="bg-white rounded-xl p-8 shadow-lg card-hover text-left border-l-4 border-pink-500">
-                            <div class="flex items-center mb-4">
-                                <i class="fas fa-brain text-pink-500 text-2xl mr-4"></i>
-                                <h3 class="text-xl font-semibold" data-translate="smart_recommendations">Smart Recommendations</h3>
+                        <!-- Smart Recommendations Card -->
+                        <button id="smartRecommendationsBtn" onclick="loadSmartRecommendations()" class="group glass-card ai-bg h-80">
+                            <!-- Animated Background Pattern -->
+                            <div class="glass-pattern ai-animation"></div>
+                            
+                            <div class="absolute top-6 left-6 z-20">
+                                <div class="w-16 h-16 glass-icon rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i class="fas fa-brain text-white text-2xl"></i>
+                                </div>
                             </div>
-                            <p class="text-gray-600" data-translate="smart_rec_description">AI-powered seasonal suggestions</p>
+                            <div class="absolute bottom-0 left-0 right-0 p-8 z-20">
+                                <h3 class="text-3xl font-bold mb-4 text-white group-hover:text-cyan-200 transition-colors">AI Travel Insights</h3>
+                                <p class="text-lg leading-relaxed text-white opacity-90">Smart seasonal suggestions for monsoon Kerala, winter Rajasthan, and perfect timing recommendations</p>
+                            </div>
                         </button>
                     </div>
                 </div>
@@ -606,7 +1130,7 @@
                 <i class="fas fa-robot mr-2"></i>
                 <span class="font-semibold" data-translate="travel_assistant">Travel Assistant</span>
             </div>
-            <button id="closeChatbot" class="text-white hover:text-gray-200">
+            <button id="closeChatbot" class="text-black hover:text-gray-600 font-bold text-lg">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -623,7 +1147,7 @@
             </div>
         </div>
         <div class="chatbot-input-area">
-            <input type="text" id="chatbotInput" placeholder="Type your message..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" data-translate-placeholder="type_message">
+            <input type="text" id="chatbotInput" placeholder="Type your message..." class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black" data-translate-placeholder="type_message">
             <button id="sendMessage" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
                 <i class="fas fa-paper-plane"></i>
             </button>

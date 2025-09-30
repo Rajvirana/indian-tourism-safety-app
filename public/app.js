@@ -411,22 +411,39 @@ async function apiCall(endpoint, options = {}) {
 
 // Chatbot functions
 function toggleChatbot() {
-    console.log('Chatbot toggle clicked!');
+    console.log('🤖 toggleChatbot() function called!');
     const container = document.getElementById('chatbotContainer');
     const toggle = document.getElementById('chatbotToggle');
     
+    console.log('🔍 Chatbot elements check:', {
+        container: !!container,
+        toggle: !!toggle,
+        currentState: chatbotOpen
+    });
+    
     if (chatbotOpen) {
-        container.style.display = 'none';
-        chatbotOpen = false;
-        console.log('Chatbot closed');
+        if (container) {
+            container.style.display = 'none';
+            chatbotOpen = false;
+            console.log('✅ Chatbot closed');
+        } else {
+            console.error('❌ Container not found when trying to close!');
+        }
     } else {
-        container.style.display = 'flex';
-        chatbotOpen = true;
-        console.log('Chatbot opened');
-        // Focus input when opening
-        const input = document.getElementById('chatbotInput');
-        if (input) {
-            input.focus();
+        if (container) {
+            container.style.display = 'flex';
+            chatbotOpen = true;
+            console.log('✅ Chatbot opened');
+            // Focus input when opening
+            const input = document.getElementById('chatbotInput');
+            if (input) {
+                setTimeout(() => input.focus(), 100);
+                console.log('✅ Input focused');
+            } else {
+                console.error('❌ Input not found!');
+            }
+        } else {
+            console.error('❌ Container not found when trying to open!');
         }
     }
 }
@@ -718,7 +735,10 @@ function showAuthContainer() {
     document.getElementById('dashboard').classList.add('hidden');
     document.getElementById('sosBtn').classList.add('hidden');
     document.getElementById('chatbotToggle').classList.remove('hidden'); // Show chatbot even on auth screen
-    document.getElementById('chatbotContainer').style.display = 'none';
+    const chatbotContainer = document.getElementById('chatbotContainer');
+    if (chatbotContainer) {
+        chatbotContainer.style.display = 'none';
+    }
     document.getElementById('profileBtn').classList.add('hidden');
     document.getElementById('logoutBtn').classList.add('hidden');
     chatbotOpen = false;
@@ -737,6 +757,13 @@ function showDashboard() {
     document.getElementById('chatbotToggle').classList.remove('hidden');
     document.getElementById('profileBtn').classList.remove('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
+    
+    // Ensure chatbot starts closed
+    const chatbotContainer = document.getElementById('chatbotContainer');
+    if (chatbotContainer) {
+        chatbotContainer.style.display = 'none';
+    }
+    chatbotOpen = false;
     
     // Initialize hero background slideshow and buttons
     setTimeout(() => {
@@ -910,8 +937,8 @@ function showHiddenGemsModal() {
                         <h2 class="text-3xl font-bold mb-2">🏔️ Hidden Gems of India</h2>
                         <p class="opacity-90">Discover India's best-kept secrets</p>
                     </div>
-                    <button id="closeHiddenGems" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
-                        <i class="fas fa-times text-xl"></i>
+                    <button id="closeHiddenGems" class="text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-30 transition-all duration-200 z-10">
+                        <i class="fas fa-times text-lg"></i>
                     </button>
                 </div>
             </div>
@@ -922,7 +949,10 @@ function showHiddenGemsModal() {
                     ${hiddenGems.map((gem, index) => `
                         <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
                             <div class="relative">
-                                <img src="${gem.image}" alt="${gem.name}" class="w-full h-48 object-cover">
+                                <img src="${gem.image}" alt="${gem.name}" class="w-full h-48 object-cover" 
+                                     onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop&auto=format&q=80'; this.alt='Beautiful India';" 
+                                     loading="lazy"
+                                     style="background-color: #f3f4f6; min-height: 192px;">
                                 <div class="absolute top-3 left-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
                                     ${gem.highlight}
                                 </div>
@@ -966,20 +996,42 @@ function showHiddenGemsModal() {
     
     // Add event listeners
     modal.querySelector('#closeHiddenGems').addEventListener('click', () => {
-        document.body.removeChild(modal);
+        modal.remove();
     });
     
     modal.querySelector('#createFullItinerary').addEventListener('click', () => {
-        document.body.removeChild(modal);
+        modal.remove();
         createItinerary(); // Use existing itinerary function
     });
     
     // Close on background click
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-            document.body.removeChild(modal);
+            modal.remove();
         }
     });
+    
+    // Add keyboard close functionality
+    const handleKeyClose = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleKeyClose);
+        }
+    };
+    document.addEventListener('keydown', handleKeyClose);
+    
+    // Remove event listener when modal is removed
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.removedNodes.forEach((node) => {
+                if (node === modal) {
+                    document.removeEventListener('keydown', handleKeyClose);
+                    observer.disconnect();
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true });
 }
 
 // Clean up any open modals
@@ -1252,6 +1304,485 @@ function showQRCode() {
             modal.remove();
         }
     });
+}
+
+// Show Comprehensive Profile Modal
+function showProfileModal() {
+    if (!currentUser || !currentUser.user) {
+        showNotification('Please log in to view your profile', 'error');
+        return;
+    }
+
+    const user = currentUser.user;
+    const userTravels = JSON.parse(localStorage.getItem('userTravels') || '[]');
+    const savedPaymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || '[]');
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.style.zIndex = '9999';
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <!-- Header -->
+            <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold">${user.name}</h2>
+                            <p class="opacity-90">${user.email}</p>
+                            <span class="inline-block bg-green-500 text-white px-2 py-1 rounded-full text-xs mt-1">
+                                <i class="fas fa-check-circle mr-1"></i>Verified
+                            </span>
+                        </div>
+                    </div>
+                    <button id="closeProfile" class="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Profile Navigation Tabs -->
+            <div class="border-b bg-gray-50">
+                <div class="flex space-x-0">
+                    <button class="profile-tab active px-6 py-4 font-medium text-blue-600 border-b-2 border-blue-600" data-tab="personal">
+                        <i class="fas fa-user mr-2"></i>Personal Info
+                    </button>
+                    <button class="profile-tab px-6 py-4 font-medium text-gray-600 hover:text-blue-600" data-tab="travels">
+                        <i class="fas fa-map-marked-alt mr-2"></i>My Travels
+                    </button>
+                    <button class="profile-tab px-6 py-4 font-medium text-gray-600 hover:text-blue-600" data-tab="payments">
+                        <i class="fas fa-credit-card mr-2"></i>Payment Methods
+                    </button>
+                    <button class="profile-tab px-6 py-4 font-medium text-gray-600 hover:text-blue-600" data-tab="settings">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="p-6">
+                <!-- Personal Info Tab -->
+                <div id="personal-tab" class="tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                                <i class="fas fa-id-card mr-2 text-blue-500"></i>Basic Information
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Full Name:</span>
+                                    <span class="font-medium">${user.name}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Email:</span>
+                                    <span class="font-medium">${user.email}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">User Type:</span>
+                                    <span class="font-medium capitalize">${user.userType?.replace('_', ' ')}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Member Since:</span>
+                                    <span class="font-medium">${new Date().toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                                <i class="fas fa-shield-alt mr-2 text-green-500"></i>Verification Status
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">Identity Verified:</span>
+                                    <span class="flex items-center text-green-600">
+                                        <i class="fas fa-check-circle mr-1"></i>Verified
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">QR Code:</span>
+                                    <button onclick="showQRCode()" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-qrcode mr-1"></i>View QR
+                                    </button>
+                                </div>
+                                <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Your digital travel ID is ready for use at attractions, hotels, and checkpoints.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Travels Tab -->
+                <div id="travels-tab" class="tab-content hidden">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800">
+                                <i class="fas fa-map-marked-alt mr-2 text-blue-500"></i>My Travel History
+                            </h3>
+                            <button onclick="addNewTravel()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i>Add Travel
+                            </button>
+                        </div>
+                        
+                        ${userTravels.length > 0 ? `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${userTravels.map(travel => `
+                                    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <h4 class="font-semibold text-gray-800">${travel.destination}</h4>
+                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${travel.status}</span>
+                                        </div>
+                                        <div class="space-y-2 text-sm text-gray-600">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-calendar mr-2"></i>
+                                                ${travel.startDate} - ${travel.endDate}
+                                            </div>
+                                            <div class="flex items-center">
+                                                <i class="fas fa-users mr-2"></i>
+                                                ${travel.travelers} travelers
+                                            </div>
+                                            <div class="flex items-center">
+                                                <i class="fas fa-rupee-sign mr-2"></i>
+                                                ₹${travel.budget?.toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-12 bg-gray-50 rounded-xl">
+                                <i class="fas fa-map-marked-alt text-4xl text-gray-300 mb-4"></i>
+                                <h4 class="text-lg font-semibold text-gray-600 mb-2">No travels yet</h4>
+                                <p class="text-gray-500 mb-4">Start planning your first adventure!</p>
+                                <button onclick="addNewTravel()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-2"></i>Plan Your First Trip
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+
+                <!-- Payment Methods Tab -->
+                <div id="payments-tab" class="tab-content hidden">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800">
+                                <i class="fas fa-credit-card mr-2 text-green-500"></i>Payment Methods
+                            </h3>
+                            <button onclick="addPaymentMethod()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                                <i class="fas fa-plus mr-2"></i>Add Card
+                            </button>
+                        </div>
+                        
+                        ${savedPaymentMethods.length > 0 ? `
+                            <div class="space-y-4">
+                                ${savedPaymentMethods.map((method, index) => `
+                                    <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center space-x-4">
+                                                <div class="w-12 h-8 bg-gradient-to-r ${method.type === 'visa' ? 'from-blue-600 to-blue-700' : method.type === 'mastercard' ? 'from-red-500 to-red-600' : 'from-purple-500 to-purple-600'} rounded flex items-center justify-center">
+                                                    <i class="fas fa-credit-card text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="font-semibold">**** **** **** ${method.lastFour}</p>
+                                                    <p class="text-sm text-gray-600">${method.cardholderName}</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                ${method.isDefault ? '<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Default</span>' : ''}
+                                                <button onclick="removePaymentMethod(${index})" class="text-red-500 hover:text-red-700">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-12 bg-gray-50 rounded-xl">
+                                <i class="fas fa-credit-card text-4xl text-gray-300 mb-4"></i>
+                                <h4 class="text-lg font-semibold text-gray-600 mb-2">No payment methods</h4>
+                                <p class="text-gray-500 mb-4">Add a payment method for easy bookings</p>
+                                <button onclick="addPaymentMethod()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                                    <i class="fas fa-plus mr-2"></i>Add Your First Card
+                                </button>
+                            </div>
+                        `}
+                        
+                        <div class="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-shield-alt text-yellow-600 mt-1"></i>
+                                <div>
+                                    <h4 class="font-semibold text-yellow-800">Secure Payment</h4>
+                                    <p class="text-sm text-yellow-700">Your payment information is encrypted and stored securely. We never store your full card details.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <!-- Language Settings -->
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                                <i class="fas fa-language mr-2 text-purple-500"></i>Language & Region
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Preferred Language</label>
+                                    <select id="profileLanguageSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        <option value="en">English</option>
+                                        <option value="hi">हिंदी (Hindi)</option>
+                                        <option value="bn">বাংলা (Bengali)</option>
+                                        <option value="te">తెలుగు (Telugu)</option>
+                                        <option value="mr">मराठी (Marathi)</option>
+                                        <option value="ta">தமிழ் (Tamil)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                        <option value="INR">Indian Rupee (₹)</option>
+                                        <option value="USD">US Dollar ($)</option>
+                                        <option value="EUR">Euro (€)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Privacy Settings -->
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                                <i class="fas fa-user-shield mr-2 text-green-500"></i>Privacy & Security
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Location Tracking</p>
+                                        <p class="text-sm text-gray-600">Allow family to track your location during trips</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Emergency Alerts</p>
+                                        <p class="text-sm text-gray-600">Send automatic SOS alerts to emergency contacts</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                                <i class="fas fa-bell mr-2 text-yellow-500"></i>Notifications
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Travel Recommendations</p>
+                                        <p class="text-sm text-gray-600">Get personalized travel suggestions</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    </label>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="font-medium">Festival Alerts</p>
+                                        <p class="text-sm text-gray-600">Get notified about festivals in your area</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Actions -->
+                        <div class="bg-red-50 rounded-xl p-6 border border-red-200">
+                            <h3 class="text-lg font-semibold mb-4 text-red-800">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>Account Actions
+                            </h3>
+                            <div class="space-y-3">
+                                <button class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                    <i class="fas fa-key mr-2"></i>Change Password
+                                </button>
+                                <button class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                    <i class="fas fa-download mr-2"></i>Download My Data
+                                </button>
+                                <button class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                                    <i class="fas fa-user-times mr-2"></i>Delete Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+
+    // Add event listeners
+    modal.querySelector('#closeProfile').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+
+    // Tab functionality
+    const tabs = modal.querySelectorAll('.profile-tab');
+    const tabContents = modal.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            tabs.forEach(t => {
+                t.classList.remove('active', 'text-blue-600', 'border-b-2', 'border-blue-600');
+                t.classList.add('text-gray-600');
+            });
+            
+            // Add active class to clicked tab
+            tab.classList.add('active', 'text-blue-600', 'border-b-2', 'border-blue-600');
+            tab.classList.remove('text-gray-600');
+
+            // Hide all tab contents
+            tabContents.forEach(content => content.classList.add('hidden'));
+            
+            // Show selected tab content
+            const tabId = tab.getAttribute('data-tab') + '-tab';
+            modal.querySelector('#' + tabId).classList.remove('hidden');
+        });
+    });
+
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
+// Profile helper functions
+function addNewTravel() {
+    // Close profile modal and open itinerary creator
+    const profileModal = document.querySelector('.fixed.inset-0');
+    if (profileModal) profileModal.remove();
+    
+    // Open the trip planning interface
+    createItinerary('');
+}
+
+function addPaymentMethod() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.style.zIndex = '10000';
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl max-w-md w-full">
+            <div class="p-6 border-b">
+                <h3 class="text-xl font-bold">Add Payment Method</h3>
+            </div>
+            <form id="paymentForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name</label>
+                    <input type="text" name="cardholderName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
+                    <input type="text" name="cardNumber" placeholder="1234 5678 9012 3456" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                        <input type="text" name="expiryDate" placeholder="MM/YY" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
+                        <input type="text" name="cvv" placeholder="123" required class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" name="isDefault" class="mr-2">
+                    <label class="text-sm text-gray-700">Set as default payment method</label>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">
+                        Add Card
+                    </button>
+                    <button type="button" onclick="this.closest('.fixed').remove()" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.querySelector('#paymentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const cardNumber = formData.get('cardNumber').replace(/\s/g, '');
+        
+        const paymentMethod = {
+            cardholderName: formData.get('cardholderName'),
+            lastFour: cardNumber.slice(-4),
+            type: cardNumber.startsWith('4') ? 'visa' : cardNumber.startsWith('5') ? 'mastercard' : 'other',
+            expiryDate: formData.get('expiryDate'),
+            isDefault: formData.get('isDefault') === 'on'
+        };
+        
+        const paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || '[]');
+        
+        // If this is set as default, remove default from others
+        if (paymentMethod.isDefault) {
+            paymentMethods.forEach(method => method.isDefault = false);
+        }
+        
+        paymentMethods.push(paymentMethod);
+        localStorage.setItem('paymentMethods', JSON.stringify(paymentMethods));
+        
+        showNotification('Payment method added successfully!', 'success');
+        modal.remove();
+        
+        // Refresh profile modal
+        const profileModal = document.querySelector('.fixed.inset-0');
+        if (profileModal) {
+            profileModal.remove();
+            showProfileModal();
+        }
+    });
+}
+
+function removePaymentMethod(index) {
+    const paymentMethods = JSON.parse(localStorage.getItem('paymentMethods') || '[]');
+    paymentMethods.splice(index, 1);
+    localStorage.setItem('paymentMethods', JSON.stringify(paymentMethods));
+    
+    showNotification('Payment method removed', 'success');
+    
+    // Refresh profile modal
+    const profileModal = document.querySelector('.fixed.inset-0');
+    if (profileModal) {
+        profileModal.remove();
+        showProfileModal();
+    }
 }
 
 // QR utility functions
@@ -1546,7 +2077,9 @@ function renderPlacesHTML(places) {
         <div class="bg-white border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
             ${place.image ? `
                 <div class="relative h-48 bg-gray-200">
-                    <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover" loading="lazy">
+                    <img src="${place.image}" alt="${place.name}" class="w-full h-full object-cover" loading="lazy"
+                         onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop&auto=format&q=80'; this.alt='Beautiful India';" 
+                         style="background-color: #f3f4f6;">
                     <div class="absolute top-3 right-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                         ${place.category}
                     </div>
@@ -1642,105 +2175,272 @@ function filterPlacesByCategory(category) {
     filterPlaces(searchInput?.value || '');
 }
 
+// Enhanced Festival Detail Modal for Individual Festivals
+function showFestivalDetailModal(festival) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 festival-modal-backdrop';
+    modal.style.zIndex = '10000';
+    
+    // Get festival-specific gradient colors
+    const gradientColors = getFestivalGradient(festival.name);
+    
+    modal.innerHTML = `
+                        <div class="festival-detail-modal glassmorphism-modal max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <!-- Animated entrance -->
+            <div class="modal-content">
+                <!-- Banner Header with Image Overlay -->
+                <div class="relative h-64 overflow-hidden rounded-t-3xl">
+                    <!-- Background Image -->
+                    ${festival.image ? `
+                        <img src="${festival.image}" 
+                             alt="${festival.name}" 
+                             class="w-full h-full object-cover festival-banner-image"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                             style="background-color: #f3f4f6;">
+                        <div class="w-full h-full bg-gradient-to-br ${gradientColors} flex items-center justify-center" style="display: none;">
+                            <div class="text-center text-white">
+                                <i class="fas fa-calendar-star text-6xl mb-4 opacity-80"></i>
+                                <h2 class="text-4xl font-bold">${festival.name}</h2>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="w-full h-full bg-gradient-to-br ${gradientColors} flex items-center justify-center">
+                            <div class="text-center text-white">
+                                <i class="fas fa-calendar-star text-6xl mb-4 opacity-80"></i>
+                                <h2 class="text-4xl font-bold">${festival.name}</h2>
+                            </div>
+                        </div>
+                    `}
+                    
+                    <!-- Gradient Overlay -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+                    
+                    <!-- Festival Title Overlay -->
+                    <div class="absolute bottom-0 left-0 right-0 p-8">
+                        <div class="festival-title-container">
+                            <h1 class="text-5xl font-bold text-white mb-2 festival-title">${festival.name}</h1>
+                            <p class="text-xl text-white opacity-90 font-medium">${getFestivalSubtitle(festival)}</p>
+                            <div class="flex items-center mt-4 text-white opacity-80">
+                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                <span class="mr-6">${festival.location}</span>
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span>${festival.month}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Close Button -->
+                    <button onclick="closeFestivalModal(this)" 
+                            class="festival-close-btn absolute top-6 right-6 glass-close-button">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="festival-modal-body overflow-y-auto" style="max-height: 60vh;">
+                    <div class="p-8">
+                        <!-- Key Info Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                            <div class="glass-info-card">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-calendar text-blue-400 text-lg mr-3"></i>
+                                    <span class="text-sm font-semibold text-white">Duration</span>
+                                </div>
+                                <p class="text-white font-bold text-lg">${festival.duration || 'Multiple Days'}</p>
+                            </div>
+                            
+                            <div class="glass-info-card">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-star text-yellow-400 text-lg mr-3"></i>
+                                    <span class="text-sm font-semibold text-white">Festival</span>
+                                </div>
+                                <p class="text-white font-bold text-lg">${festival.name}</p>
+                            </div>
+                            
+                            <div class="glass-info-card">
+                                <div class="flex items-center mb-2">
+                                    <i class="fas fa-users text-green-400 text-lg mr-3"></i>
+                                    <span class="text-sm font-semibold text-white">Celebration</span>
+                                </div>
+                                <p class="text-white font-bold text-lg">${festival.location}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="mb-8">
+                            <h3 class="text-2xl font-bold text-white mb-4 flex items-center">
+                                <i class="fas fa-book-open mr-3 text-purple-400"></i>About ${festival.name}
+                            </h3>
+                            <p class="text-gray-200 leading-relaxed text-lg">${festival.description}</p>
+                        </div>
+                        
+                        <!-- Key Activities -->
+                        ${festival.activities && festival.activities.length > 0 ? `
+                            <div class="mb-8">
+                                <h3 class="text-2xl font-bold text-white mb-4 flex items-center">
+                                    <i class="fas fa-sparkles mr-3 text-yellow-400"></i>Festival Activities
+                                </h3>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    ${festival.activities.map(activity => `
+                                        <div class="activity-pill">
+                                            <i class="fas fa-star mr-2 text-yellow-400"></i>${activity}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <!-- Best Places to Celebrate -->
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-bold text-white mb-4 flex items-center">
+                                <i class="fas fa-map-marked-alt mr-3 text-red-400"></i>Best Places to Celebrate
+                            </h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                ${festival.bestPlaces.map(place => `
+                                    <div class="place-pill">
+                                        <i class="fas fa-location-dot mr-2 text-red-400"></i>${place}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add entrance animation
+    requestAnimationFrame(() => {
+        const modalElement = modal.querySelector('.festival-detail-modal');
+        if (modalElement) {
+            modalElement.classList.add('modal-animate-in');
+        }
+    });
+}
+
+// Helper function to get festival-specific gradients
+function getFestivalGradient(festivalName) {
+    const gradients = {
+        'Diwali': 'from-amber-600 via-orange-600 to-red-600',
+        'Holi': 'from-pink-500 via-purple-500 to-blue-500',
+        'Durga Puja': 'from-red-600 via-orange-500 to-yellow-500',
+        'Ganesh Chaturthi': 'from-orange-500 via-red-500 to-pink-500',
+        'Navratri': 'from-purple-600 via-pink-500 to-red-500',
+        'Onam': 'from-green-600 via-teal-500 to-blue-500',
+        'Karva Chauth': 'from-rose-500 via-pink-500 to-purple-500',
+        'Baisakhi': 'from-yellow-500 via-orange-500 to-red-500'
+    };
+    return gradients[festivalName] || 'from-purple-600 via-blue-600 to-indigo-600';
+}
+
+// Helper function to get festival subtitle
+function getFestivalSubtitle(festival) {
+    const subtitles = {
+        'Diwali': 'Festival of Lights',
+        'Holi': 'Festival of Colors',
+        'Durga Puja': 'Celebration of Divine Feminine',
+        'Ganesh Chaturthi': 'Lord Ganesha\'s Festival',
+        'Navratri': 'Nine Nights of Dance',
+        'Onam': 'Kerala\'s Harvest Festival',
+        'Karva Chauth': 'Festival of Love & Devotion',
+        'Baisakhi': 'Harvest & New Year Festival'
+    };
+    return subtitles[festival.name] || 'Cultural Celebration';
+}
+
+// Function to close festival modal with animation
+function closeFestivalModal(element) {
+    const modal = element.closest('.festival-modal-backdrop');
+    const modalContent = modal.querySelector('.festival-detail-modal');
+    modalContent.classList.add('modal-animate-out');
+    setTimeout(() => {
+        modal.remove();
+    }, 300);
+}
+
 function showFestivalsModal(festivals) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
     modal.style.zIndex = '9999';
     modal.innerHTML = `
-        <div class="bg-white rounded-xl max-w-6xl max-h-full overflow-y-auto">
+        <div class="glassmorphism-modal-list max-w-7xl w-full max-h-[95vh] overflow-hidden">
             <!-- Header with gradient -->
-            <div class="relative bg-gradient-to-r from-orange-600 to-red-600 text-white p-6 rounded-t-xl">
-                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-30 rounded-full w-10 h-10 flex items-center justify-center">
-                    <i class="fas fa-times"></i>
+            <div class="relative bg-gradient-to-r from-orange-600 to-red-600 text-white p-6 rounded-t-3xl">
+                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-30 rounded-full w-12 h-12 flex items-center justify-center transition-all hover:bg-opacity-50">
+                    <i class="fas fa-times text-lg"></i>
                     </button>
-                <h2 class="text-3xl font-bold mb-2">
+                <h2 class="text-4xl font-bold mb-2">
                     <i class="fas fa-calendar-alt mr-3"></i>Indian Festivals & Cultural Events
                 </h2>
-                <p class="text-lg opacity-90">Discover India's rich cultural celebrations throughout the year</p>
+                <p class="text-xl opacity-90">Discover India's rich cultural celebrations throughout the year</p>
                 </div>
             
             <!-- Festivals Grid -->
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     ${festivals.map(festival => `
-                        <div class="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                        <div class="festival-card-clickable bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border border-white/20" data-festival='${JSON.stringify(festival)}' onclick="showFestivalDetailModal(JSON.parse(this.getAttribute('data-festival')))">
                             <!-- Festival Image -->
-                            <div class="relative h-48 overflow-hidden bg-gradient-to-br from-orange-500 to-red-500">
+                            <div class="relative h-48 overflow-hidden">
                                 ${festival.image ? `
-                                    <img src="${festival.image}" 
-                                         alt="${festival.name}" 
-                                         class="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                                         loading="lazy"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="w-full h-full flex items-center justify-center text-white absolute inset-0" style="display:none;">
-                                        <div class="text-center">
+                                    <img src="${festival.image}" alt="${festival.name}" 
+                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                         style="background-color: #f3f4f6;">
+                                    <div class="w-full h-full bg-gradient-to-br ${getFestivalGradient(festival.name)} flex items-center justify-center" style="display: none;">
+                                        <div class="text-center text-white">
                                             <i class="fas fa-calendar-alt text-4xl mb-3"></i>
                                             <h3 class="text-xl font-bold mb-2">${festival.name}</h3>
-                                            <p class="text-lg font-semibold">${festival.category}</p>
                                         </div>
                                     </div>
                                 ` : `
-                                    <div class="w-full h-full flex items-center justify-center text-white">
-                                        <div class="text-center">
+                                    <div class="w-full h-full bg-gradient-to-br ${getFestivalGradient(festival.name)} flex items-center justify-center">
+                                        <div class="text-center text-white">
                                             <i class="fas fa-calendar-alt text-4xl mb-3"></i>
                                             <h3 class="text-xl font-bold mb-2">${festival.name}</h3>
-                                            <p class="text-lg font-semibold">${festival.category}</p>
                                         </div>
                                     </div>
                                 `}
-                                <div class="absolute top-3 left-3 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg">
-                                    ${festival.category}
-                                </div>
-                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
-                                    <h3 class="text-white text-xl font-bold drop-shadow-lg">${festival.name}</h3>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                <div class="absolute bottom-4 left-4 right-4">
+                                    <h3 class="text-white text-xl font-bold drop-shadow-lg mb-1">${festival.name}</h3>
                                     <p class="text-white text-sm opacity-90 drop-shadow-md">
                                         <i class="fas fa-map-marker-alt mr-1"></i>${festival.location}
                                     </p>
                                 </div>
+                                <!-- Click to view indicator -->
+                                <div class="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                                    Click to view
+                                </div>
                             </div>
                             
-                            <!-- Festival Content -->
+                            <!-- Festival Content Preview -->
                             <div class="p-5">
                                 <div class="flex items-center justify-between mb-3">
-                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    <span class="bg-blue-100/20 backdrop-blur-sm text-blue-300 px-3 py-1 rounded-full text-sm font-medium border border-blue-300/30">
                                         <i class="fas fa-calendar mr-1"></i>${festival.month}
                                     </span>
                                     ${festival.duration ? `
-                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                                            <i class="fas fa-clock mr-1"></i>${festival.duration}
+                                        <span class="bg-green-100/20 backdrop-blur-sm text-green-300 px-3 py-1 rounded-full text-sm font-medium border border-green-300/30">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            ${festival.duration}
                                         </span>
                                     ` : ''}
                                 </div>
                                 
-                                <p class="text-gray-700 mb-4 leading-relaxed">${festival.description}</p>
+                                <p class="text-gray-200 text-sm mb-4 leading-relaxed line-clamp-3">${festival.description}</p>
                                 
-                                <!-- Activities -->
-                                ${festival.activities ? `
-                                    <div class="mb-4">
-                                        <h4 class="text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                                            <i class="fas fa-star mr-2 text-yellow-500"></i>Key Activities
-                                        </h4>
-                                        <div class="flex flex-wrap gap-2">
-                                            ${festival.activities.map(activity => `
-                                                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                    ${activity}
-                                                </span>
-                                            `).join('')}
-                                        </div>
+                                <!-- Quick preview of activities -->
+                                ${festival.activities && festival.activities.length > 0 ? `
+                                    <div class="flex flex-wrap gap-1 mb-3">
+                                        ${festival.activities.slice(0, 3).map(activity => `
+                                            <span class="bg-orange-100/20 backdrop-blur-sm text-orange-300 px-2 py-1 rounded text-xs font-medium border border-orange-300/30">${activity}</span>
+                                        `).join('')}
+                                        ${festival.activities.length > 3 ? `<span class="text-gray-400 text-xs">+${festival.activities.length - 3} more</span>` : ''}
                                     </div>
                                 ` : ''}
-                                
-                                <!-- Best Places -->
-                                <div class="mb-4">
-                                    <h4 class="text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                                        <i class="fas fa-map-marker-alt mr-2 text-red-500"></i>Best Places to Celebrate
-                                    </h4>
-                                    <div class="flex flex-wrap gap-1">
-                                    ${festival.bestPlaces.map(place => `
-                                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">${place}</span>
-                                    `).join('')}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     `).join('')}
@@ -1752,9 +2452,10 @@ function showFestivalsModal(festivals) {
 }
 
 function showSmartRecommendationsModal(data) {
-    // Check if user is logged in and on the right page
+    // Allow users to view recommendations but show login prompt if not logged in
     if (!currentUser) {
-        console.log('Smart recommendations requires login');
+        console.log('Smart recommendations - showing login prompt');
+        showSmartRecommendationsWithLoginPrompt(data);
         return;
     }
     
@@ -1776,12 +2477,12 @@ function showSmartRecommendationsModal(data) {
     window.selectedMoods = [];
     
     modal.innerHTML = `
-        <div class="bg-white rounded-xl max-w-6xl max-h-full overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto mx-4">
             <!-- Header with gradient -->
             <div class="relative bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-t-xl">
-                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white hover:text-gray-300 bg-black bg-opacity-30 rounded-full w-10 h-10 flex items-center justify-center">
-                    <i class="fas fa-times"></i>
-                    </button>
+                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-30 transition-all duration-200 z-10">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
                 <h2 class="text-3xl font-bold mb-2">
                     <i class="fas fa-brain mr-3"></i><span data-translate="smart_recommendations">Smart Recommendations</span>
                 </h2>
@@ -1856,11 +2557,15 @@ function showSmartRecommendationsModal(data) {
             <!-- Recommendations Grid -->
             <div class="p-6">
                 ${data.recommendations.length > 0 ? `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        ${data.recommendations.map(rec => `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        ${data.recommendations.map((rec, index) => `
                             <div class="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                                <div class="relative h-48 overflow-hidden">
-                                    <img src="${rec.image}" alt="${rec.name}" class="w-full h-full object-cover">
+                                <div class="relative h-56 overflow-hidden">
+                                    <img src="${rec.image}" alt="${rec.name}" class="w-full h-full object-cover"
+                                         onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop&auto=format&q=80'; this.alt='Beautiful India';" 
+                                         loading="lazy"
+                                         style="background-color: #f3f4f6; min-height: 224px;"
+                                         onload="console.log('Image ${index + 1} loaded successfully')">
                                     <div class="absolute top-3 left-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                                         ${rec.type}
                                     </div>
@@ -1933,8 +2638,211 @@ function showSmartRecommendationsModal(data) {
     `;
     document.body.appendChild(modal);
     
+    // Add close modal functionality
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Add keyboard close functionality
+    const handleKeyClose = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleKeyClose);
+        }
+    };
+    document.addEventListener('keydown', handleKeyClose);
+    
+    // Remove event listener when modal is removed
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.removedNodes.forEach((node) => {
+                if (node === modal) {
+                    document.removeEventListener('keydown', handleKeyClose);
+                    observer.disconnect();
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true });
+    
     // Apply translations to the modal content
     updateLanguage();
+}
+
+// Show smart recommendations with login prompt for non-logged in users
+function showSmartRecommendationsWithLoginPrompt(data) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4';
+    modal.style.zIndex = '9999';
+    modal.id = 'smartRecommendationsModal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto mx-4">
+            <!-- Header with gradient -->
+            <div class="relative bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 rounded-t-xl">
+                <button onclick="this.closest('.fixed').remove()" class="absolute top-4 right-4 text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full w-12 h-12 flex items-center justify-center hover:bg-opacity-30 transition-all duration-200 z-10">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+                <h2 class="text-3xl font-bold mb-2">
+                    <i class="fas fa-brain mr-3"></i>Smart Recommendations
+                </h2>
+                <p class="text-lg opacity-90">${data.message}</p>
+                <div class="mt-4 flex items-center space-x-4">
+                    <span class="bg-white bg-opacity-20 px-4 py-2 rounded-full text-sm font-medium">
+                        <i class="fas fa-calendar-alt mr-2"></i>${data.month} ${new Date().getFullYear()}
+                    </span>
+                    <span class="bg-white bg-opacity-20 px-4 py-2 rounded-full text-sm font-medium">
+                        <i class="fas fa-thermometer-half mr-2"></i>Perfect Season
+                    </span>
+                </div>
+            </div>
+
+            <!-- Login Prompt Section -->
+            <div class="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+                <div class="max-w-4xl mx-auto text-center">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-4">
+                            <i class="fas fa-user-plus text-white text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-xl font-bold text-gray-800">Get Personalized Recommendations!</h3>
+                            <p class="text-gray-600">Sign up to unlock mood-based travel suggestions and create custom itineraries</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-center space-x-4">
+                        <button onclick="document.getElementById('registerTab').click(); this.closest('.fixed').remove();" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg">
+                            <i class="fas fa-user-plus mr-2"></i>Sign Up Free
+                        </button>
+                        <button onclick="document.getElementById('loginTab').click(); this.closest('.fixed').remove();" class="bg-white text-blue-600 border-2 border-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all duration-300">
+                            <i class="fas fa-sign-in-alt mr-2"></i>Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recommendations Preview (Read-only) -->
+            <div class="p-6">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">
+                        <i class="fas fa-eye mr-2 text-purple-500"></i>Preview of ${data.month} Recommendations
+                    </h3>
+                    <p class="text-center text-gray-600 mb-6">Here's a preview of what you'll get with personalized recommendations!</p>
+                </div>
+
+                ${data.recommendations.length > 0 ? `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 opacity-75">
+                        ${data.recommendations.slice(0, 4).map((rec, index) => `
+                            <div class="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg overflow-hidden">
+                                <div class="relative h-56 overflow-hidden">
+                                    <img src="${rec.image}" alt="${rec.name}" class="w-full h-full object-cover"
+                                         onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop&auto=format&q=80'; this.alt='Beautiful India';" 
+                                         loading="lazy"
+                                         style="background-color: #f3f4f6; min-height: 224px;">
+                                    <div class="absolute top-3 left-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                        ${rec.type}
+                                    </div>
+                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-transparent to-transparent p-4">
+                                        <h3 class="text-white text-xl font-bold">${rec.name}</h3>
+                                        <p class="text-white text-sm opacity-90">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>${rec.location}
+                                        </p>
+                                    </div>
+                                    <!-- Overlay to indicate preview -->
+                                    <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                                        <div class="text-white text-center">
+                                            <i class="fas fa-lock text-3xl mb-2"></i>
+                                            <p class="font-semibold">Sign up to unlock</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-5">
+                                    <p class="text-gray-700 mb-3 leading-relaxed">${rec.description}</p>
+                                    
+                                    <!-- Best Time -->
+                                    <div class="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                                        <p class="text-green-800 text-sm">
+                                            <i class="fas fa-leaf mr-2"></i><strong>Best Time:</strong> ${rec.bestTime}
+                                        </p>
+                                    </div>
+                                    
+                                    <!-- Action Button -->
+                                    <button onclick="document.getElementById('registerTab').click(); this.closest('.fixed').remove();" class="w-full bg-gradient-to-r from-gray-400 to-gray-500 text-white py-3 px-4 rounded-lg font-semibold cursor-not-allowed">
+                                        <i class="fas fa-lock mr-2"></i>Sign Up to Plan Trip
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                </div>
+                
+                <div class="mt-8 text-center p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl">
+                    <h4 class="text-xl font-bold text-gray-800 mb-4">🌟 Get Full Access by Signing Up!</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="text-center">
+                            <i class="fas fa-heart text-2xl text-red-500 mb-2"></i>
+                            <h5 class="font-semibold">Mood-Based Planning</h5>
+                            <p class="text-sm text-gray-600">Get recommendations based on your travel mood</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-route text-2xl text-blue-500 mb-2"></i>
+                            <h5 class="font-semibold">Custom Itineraries</h5>
+                            <p class="text-sm text-gray-600">Create personalized travel plans</p>
+                        </div>
+                        <div class="text-center">
+                            <i class="fas fa-shield-alt text-2xl text-green-500 mb-2"></i>
+                            <h5 class="font-semibold">Safety Features</h5>
+                            <p class="text-sm text-gray-600">QR verification & location tracking</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('registerTab').click(); this.closest('.fixed').remove();" class="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-xl">
+                        <i class="fas fa-rocket mr-2"></i>Start Your Journey - Sign Up Free!
+                    </button>
+                </div>
+                ` : `
+                    <div class="text-center py-12">
+                        <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">No specific recommendations for ${data.month}</h3>
+                        <p class="text-gray-500">But India has amazing places to visit year-round!</p>
+                        <button onclick="document.getElementById('registerTab').click(); this.closest('.fixed').remove();" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            Sign Up to Explore All Places
+                        </button>
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add close modal functionality
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Add keyboard close functionality
+    const handleKeyClose = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleKeyClose);
+        }
+    };
+    document.addEventListener('keydown', handleKeyClose);
+    
+    // Remove event listener when modal is removed
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.removedNodes.forEach((node) => {
+                if (node === modal) {
+                    document.removeEventListener('keydown', handleKeyClose);
+                    observer.disconnect();
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true });
 }
 
 function toggleMoodTag(mood, element) {
@@ -2220,7 +3128,9 @@ function showItineraryModal(itinerary) {
             <!-- Header with Hero Image -->
             <div class="relative h-64">
                 <img src="${itinerary.image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop'}" 
-                     alt="${itinerary.destination}" class="w-full h-full object-cover rounded-t-xl">
+                     alt="${itinerary.destination}" class="w-full h-full object-cover rounded-t-xl"
+                     onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop&auto=format&q=80'; this.alt='Beautiful India';"
+                     style="background-color: #f3f4f6;">
                 <div class="absolute inset-0 bg-black bg-opacity-50 rounded-t-xl flex items-center justify-center">
                     <div class="text-center text-white">
                         <h1 class="text-4xl font-bold mb-2">${itinerary.destination}</h1>
@@ -2247,7 +3157,9 @@ function showItineraryModal(itinerary) {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     ${itinerary.hotels.map(hotel => `
                         <div class="bg-white rounded-lg p-4 shadow-md">
-                            <img src="${hotel.image}" alt="${hotel.name}" class="w-full h-32 object-cover rounded-lg mb-3">
+                            <img src="${hotel.image}" alt="${hotel.name}" class="w-full h-32 object-cover rounded-lg mb-3"
+                                 onerror="this.src='https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop'; this.alt='Hotel';"
+                                 style="background-color: #f3f4f6;">
                             <h4 class="font-semibold">${hotel.name}</h4>
                             <div class="flex items-center mb-1">
                                 ${Array(hotel.rating).fill('').map(() => '<i class="fas fa-star text-yellow-400"></i>').join('')}
@@ -2295,7 +3207,9 @@ function showItineraryModal(itinerary) {
                                                 <i class="fas fa-${mealType === 'breakfast' ? 'coffee' : mealType === 'lunch' ? 'hamburger' : 'wine-glass'} text-orange-600 mr-2"></i>
                                                 <h6 class="font-semibold text-gray-800 capitalize">${mealType}</h6>
                                             </div>
-                                            <img src="${meal.image}" alt="${meal.name}" class="w-20 h-20 object-cover rounded mb-2 mx-auto">
+                                            <img src="${meal.image}" alt="${meal.name}" class="w-20 h-20 object-cover rounded mb-2 mx-auto"
+                                                 onerror="this.src='https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop'; this.alt='Delicious Food';"
+                                                 style="background-color: #f3f4f6;">
                                             <p class="font-medium text-sm">${meal.name}</p>
                                             <p class="text-xs text-gray-600 mb-1">${meal.cuisine}</p>
                                             <p class="text-xs font-medium text-green-600">${meal.speciality}</p>
@@ -2351,7 +3265,9 @@ function showItineraryModal(itinerary) {
                                             
                                             ${activity.image ? `
                                                 <img src="${activity.image}" alt="${activity.activity}" 
-                                                     class="w-32 h-32 object-cover rounded-lg mt-3 shadow-sm mx-auto">
+                                                     class="w-32 h-32 object-cover rounded-lg mt-3 shadow-sm mx-auto"
+                                                     onerror="this.src='https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop'; this.alt='Activity';"
+                                                     style="background-color: #f3f4f6;">
                                             ` : ''}
                                         </div>
                                     </div>
@@ -2542,16 +3458,93 @@ function getActivityIcon(activity) {
 
 // Helper function to get place image
 function getPlaceImage(destinationName) {
-    // Map of destinations to their image URLs
+    // Enhanced map of destinations to their correct, specific image URLs
     const placeImages = {
+        // Major Tourist Destinations
         "Taj Mahal": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&h=600&fit=crop",
+        "Agra": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&h=600&fit=crop",
+        
+        // Rajasthan
+        "Jaipur": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800&h=600&fit=crop",
+        "Pink City": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800&h=600&fit=crop",
+        "Hawa Mahal": "https://images.unsplash.com/photo-1599661046827-dacff0acf861?w=800&h=600&fit=crop",
+        "City Palace": "https://images.unsplash.com/photo-1549180030-48bf079fb38a?w=800&h=600&fit=crop",
+        "Amber Fort": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800&h=600&fit=crop",
+        
+        // Kerala
+        "Kerala": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
         "Kerala Backwaters": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
+        "Alleppey": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
+        "Kochi": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
+        
+        // Punjab
         "Golden Temple": "https://images.unsplash.com/photo-1588997262374-8d2ac730fc85?w=800&h=600&fit=crop",
+        "Amritsar": "https://images.unsplash.com/photo-1588997262374-8d2ac730fc85?w=800&h=600&fit=crop",
+        
+        // Goa
+        "Goa": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop",
         "Goa Beaches": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop",
-        "Ladakh": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"
+        "Baga Beach": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop",
+        
+        // Ladakh
+        "Ladakh": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        "Leh": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        
+        // Mumbai
+        "Mumbai": "https://images.unsplash.com/photo-1595658658481-d53d3f999875?w=800&h=600&fit=crop",
+        "Gateway of India": "https://images.unsplash.com/photo-1595658658481-d53d3f999875?w=800&h=600&fit=crop",
+        "Marine Drive": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&h=600&fit=crop",
+        
+        // Delhi
+        "Delhi": "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=600&fit=crop",
+        "New Delhi": "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=600&fit=crop",
+        "Red Fort": "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=600&fit=crop",
+        "India Gate": "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=600&fit=crop",
+        
+        // Karnataka
+        "Hampi": "https://images.unsplash.com/photo-1575378834432-7ded0b0e1b7c?w=800&h=600&fit=crop",
+        "Bangalore": "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800&h=600&fit=crop",
+        "Mysore": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop",
+        
+        // Himachal Pradesh
+        "Shimla": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        "Manali": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        "Khajjiar": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        
+        // Uttarakhand
+        "Rishikesh": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop",
+        "Rishikesh Yoga": "https://images.unsplash.com/photo-1603988363607-e1e4a66962c6?w=800&h=600&fit=crop",
+        "Yoga Capital": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop",
+        "Yoga Poses": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=600&fit=crop",
+        "Meditation": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop",
+        "Wellness": "https://images.unsplash.com/photo-1571019613540-996a1ae23e2e?w=800&h=600&fit=crop",
+        "Haridwar": "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&h=600&fit=crop",
+        "Dehradun": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        
+        // Festivals
+        "Diwali": "https://images.unsplash.com/photo-1605372570199-c8c7d1b25e15?w=800&h=600&fit=crop",
+        "Holi": "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
+        "Durga Puja": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=600&fit=crop",
+        "Ganesh Chaturthi": "https://images.unsplash.com/photo-1582706019628-b6eeb8013987?w=800&h=600&fit=crop",
+        "Onam": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&h=600&fit=crop",
+        "Navratri": "https://images.unsplash.com/photo-1590736969955-71cc94901144?w=800&h=600&fit=crop"
     };
     
-    return placeImages[destinationName] || null;
+    // Try exact match first
+    if (placeImages[destinationName]) {
+        return placeImages[destinationName];
+    }
+    
+    // Try partial match for complex destination names
+    for (const [key, url] of Object.entries(placeImages)) {
+        if (destinationName.toLowerCase().includes(key.toLowerCase()) || 
+            key.toLowerCase().includes(destinationName.toLowerCase())) {
+            return url;
+        }
+    }
+    
+    // Fallback to default beautiful India image
+    return "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop";
 }
 
 // Hero Background Slideshow - Using diverse, reliable Indian culture images
@@ -2751,7 +3744,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Navigation buttons
-    document.getElementById('profileBtn').addEventListener('click', showQRCode);
+    document.getElementById('profileBtn').addEventListener('click', showProfileModal);
     document.getElementById('logoutBtn').addEventListener('click', logout);
     
     // Dashboard buttons - Quick Actions
@@ -2823,6 +3816,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 console.log('Loading smart recommendations via delegation...');
                 loadSmartRecommendations();
+                break;
+            case 'chatbotToggle':
+                e.preventDefault();
+                console.log('🔥 Chatbot toggle clicked via delegation!');
+                toggleChatbot();
+                break;
+                    case 'closeChatbot':
+                        e.preventDefault();
+                        console.log('🔥 Chatbot close clicked via delegation!');
+                        const container = document.getElementById('chatbotContainer');
+                        if (container) {
+                            container.style.display = 'none';
+                            chatbotOpen = false;
+                            console.log('✅ Chatbot closed successfully');
+                        } else {
+                            console.error('❌ Chatbot container not found!');
+                        }
+                        break;
+            case 'sendMessage':
+                e.preventDefault();
+                console.log('🔥 Send message clicked via delegation!');
+                sendChatMessage();
                 break;
         }
     });
@@ -2913,8 +3928,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     if (chatbotToggleBtn) {
+        console.log('🟢 Chatbot toggle button found and setting up event listener');
         chatbotToggleBtn.addEventListener('click', (e) => {
-            console.log('Chatbot toggle button clicked!');
+            console.log('🔥 CHATBOT TOGGLE BUTTON CLICKED!');
             e.preventDefault();
             e.stopPropagation();
             toggleChatbot();
@@ -2980,15 +3996,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (sendMessageBtn) {
-        sendMessageBtn.addEventListener('click', sendChatMessage);
+        sendMessageBtn.addEventListener('click', (e) => {
+            console.log('✅ Send button clicked');
+            e.preventDefault();
+            sendChatMessage();
+        });
+        console.log('✅ Send message button event listener added');
+    } else {
+        console.error('❌ Send message button not found!');
     }
     
     // Chatbot input enter key
-    document.getElementById('chatbotInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
+    const chatbotInput = document.getElementById('chatbotInput');
+    if (chatbotInput) {
+        chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+        console.log('✅ Chatbot input event listener added');
+    } else {
+        console.error('❌ Chatbot input element not found!');
+    }
     
     // Quick reply handlers for initial chatbot message
     document.addEventListener('click', (e) => {
@@ -2996,14 +4026,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const query = e.target.getAttribute('data-query');
             const text = e.target.textContent;
             
+            console.log('✅ Quick reply clicked:', { query, text });
+            
             if (query) {
                 // Handle predefined queries
                 addMessage(text, true);
                 setTimeout(() => {
-                    addMessage(getChatbotResponse(query));
+                    const response = getChatbotResponse(query);
+                    console.log('✅ Bot response:', response);
+                    addMessage(response);
                 }, 500);
             } else {
                 // Handle dynamic quick replies
+                console.log('✅ Handling dynamic quick reply');
                 handleQuickReply(text);
             }
         }
@@ -3030,14 +4065,283 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hero button and back button event listeners will be attached when respective pages are shown
 });
 
-// Voice accessibility support
-function speakText(text) {
+// Global chatbot debug function
+window.debugChatbot = function() {
+    console.log('🔧 CHATBOT DEBUG INFO:');
+    console.log('- chatbotOpen:', chatbotOpen);
+    console.log('- chatbotToggle element:', document.getElementById('chatbotToggle'));
+    console.log('- chatbotContainer element:', document.getElementById('chatbotContainer'));
+    console.log('- chatbotInput element:', document.getElementById('chatbotInput'));
+    console.log('- sendMessage element:', document.getElementById('sendMessage'));
+    
+    const container = document.getElementById('chatbotContainer');
+    if (container) {
+        console.log('- container display style:', container.style.display);
+        console.log('- container computed style:', window.getComputedStyle(container).display);
+    }
+    
+    const toggle = document.getElementById('chatbotToggle');
+    if (toggle) {
+        console.log('- toggle button visible:', toggle.offsetParent !== null);
+        console.log('- toggle button style:', toggle.style.cssText);
+        
+        // Try to manually trigger toggle function
+        console.log('🧪 Testing manual toggleChatbot() call...');
+        toggleChatbot();
+    }
+    
+    return 'Debug complete - check console above';
+};
+
+// Function to immediately stop meditation audio
+window.stopMeditationAudio = function() {
+    console.log('🛑 EMERGENCY STOP - Meditation Audio');
+    
+    // Comprehensive audio stop
+    stopSpeech();
+    
+    // Check browser tabs for audio
+    if (navigator.mediaSession) {
+        navigator.mediaSession.playbackState = 'paused';
+    }
+    
+    // Mute all audio contexts
+    if (window.AudioContext || window.webkitAudioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass.state !== 'suspended') {
+            try {
+                const ctx = new AudioContextClass();
+                ctx.suspend();
+                console.log('✅ Audio context suspended');
+            } catch (e) {
+                console.log('Audio context already managed');
+            }
+        }
+    }
+    
+    // Force stop any background timers that might trigger audio
+    const highestTimeoutId = setTimeout(() => {}, 0);
+    for (let i = 0; i < highestTimeoutId; i++) {
+        clearTimeout(i);
+    }
+    
+    console.log('✅ All meditation audio should now be stopped');
+    return 'Meditation audio stopped successfully';
+};
+
+// Debug function for image and voice issues
+window.debugMediaIssues = function() {
+    console.log('🔧 MEDIA DEBUG INFO:');
+    
+    // Check speech synthesis
+    console.log('- Speech Synthesis available:', 'speechSynthesis' in window);
     if ('speechSynthesis' in window) {
+        console.log('- Speech speaking:', speechSynthesis.speaking);
+        console.log('- Speech pending:', speechSynthesis.pending);
+        console.log('- Speech paused:', speechSynthesis.paused);
+        console.log('- Speech voices count:', speechSynthesis.getVoices().length);
+    }
+    
+    // Check for audio/video elements
+    const audioElements = document.querySelectorAll('audio');
+    const videoElements = document.querySelectorAll('video');
+    console.log('- Audio elements found:', audioElements.length);
+    console.log('- Video elements found:', videoElements.length);
+    
+    audioElements.forEach((audio, index) => {
+        console.log(`- Audio ${index + 1}:`, {
+            src: audio.src,
+            paused: audio.paused,
+            autoplay: audio.autoplay,
+            duration: audio.duration,
+            currentTime: audio.currentTime
+        });
+    });
+    
+    videoElements.forEach((video, index) => {
+        console.log(`- Video ${index + 1}:`, {
+            src: video.src,
+            paused: video.paused,
+            autoplay: video.autoplay,
+            duration: video.duration,
+            currentTime: video.currentTime
+        });
+    });
+    
+    // Check for iframes that might contain meditation content
+    const iframes = document.querySelectorAll('iframe');
+    console.log('- Iframe elements found:', iframes.length);
+    iframes.forEach((iframe, index) => {
+        console.log(`- Iframe ${index + 1}:`, {
+            src: iframe.src,
+            title: iframe.title,
+            width: iframe.width,
+            height: iframe.height
+        });
+    });
+    
+    // Check for broken images
+    const images = document.querySelectorAll('img');
+    const brokenImages = Array.from(images).filter(img => !img.complete || img.naturalHeight === 0);
+    console.log('- Total images:', images.length);
+    console.log('- Broken images:', brokenImages.length);
+    if (brokenImages.length > 0) {
+        console.log('- Broken image sources:', brokenImages.map(img => img.src));
+    }
+    
+    // Check for any file inputs (for image upload)
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    console.log('- File inputs found:', fileInputs.length);
+    
+    // Check for any camera-related elements
+    const cameraElements = document.querySelectorAll('[class*="camera"], [id*="camera"], [class*="photo"], [id*="photo"]');
+    console.log('- Camera/photo elements:', cameraElements.length);
+    
+    return 'Media debug complete - check console above';
+};
+
+// Debug function available but not auto-called
+// Call window.debugChatbot() manually in console if needed
+
+// Voice accessibility support - user controlled only
+function speakText(text, userInitiated = false) {
+    // Only allow speech if user explicitly requested it
+    if (!userInitiated) {
+        console.log('Speech blocked - not user initiated');
+        return;
+    }
+    
+    if ('speechSynthesis' in window) {
+        // Stop any ongoing speech first
+        speechSynthesis.cancel();
+        
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = currentLanguage === 'hi' ? 'hi-IN' : 'en-IN';
+        utterance.volume = 0.7;
+        utterance.rate = 0.9;
+        
+        // Add error handling
+        utterance.onerror = (event) => {
+            console.error('Speech synthesis error:', event);
+        };
+        
         speechSynthesis.speak(utterance);
     }
 }
+
+// Enhanced function to stop all speech synthesis including meditation audio
+function stopSpeech() {
+    console.log('🔇 Stopping all speech synthesis...');
+    
+    if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        speechSynthesis.pause();
+        
+        // Force clear any queued utterances
+        setTimeout(() => {
+            speechSynthesis.cancel();
+        }, 50);
+        
+        console.log('✅ Speech synthesis stopped and cleared');
+    }
+    
+    // Stop any meditation or wellness audio that might be playing
+    const audioElements = document.querySelectorAll('audio');
+    audioElements.forEach(audio => {
+        if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+            console.log('🔇 Stopped audio element:', audio.src);
+        }
+    });
+    
+    // Stop any embedded audio/video content
+    const videoElements = document.querySelectorAll('video');
+    videoElements.forEach(video => {
+        if (!video.paused) {
+            video.pause();
+            video.currentTime = 0;
+            console.log('🔇 Stopped video element:', video.src);
+        }
+    });
+}
+
+// Enhanced meditation/wellness audio blocker
+function blockMeditationAudio() {
+    console.log('🚫 Blocking unwanted meditation audio...');
+    
+    // Block common meditation terms in speech synthesis
+    const originalSpeak = speechSynthesis.speak;
+    speechSynthesis.speak = function(utterance) {
+        const text = utterance.text.toLowerCase();
+        const meditationTerms = ['breathe in', 'breathe out', 'relax', 'meditation', 'start breathing', 'inhale', 'exhale'];
+        
+        const containsMeditationTerms = meditationTerms.some(term => text.includes(term));
+        if (containsMeditationTerms) {
+            console.log('🚫 Blocked meditation speech:', text);
+            return;
+        }
+        
+        // Only allow if explicitly user-initiated
+        return originalSpeak.call(this, utterance);
+    };
+    
+    // Monitor for auto-playing audio
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) { // Element node
+                    // Check for audio/video elements
+                    const audioElements = node.querySelectorAll ? node.querySelectorAll('audio, video') : [];
+                    audioElements.forEach(element => {
+                        if (element.autoplay) {
+                            element.autoplay = false;
+                            element.pause();
+                            console.log('🚫 Blocked autoplay media:', element.src);
+                        }
+                    });
+                    
+                    // Check if the node itself is audio/video
+                    if (node.tagName === 'AUDIO' || node.tagName === 'VIDEO') {
+                        if (node.autoplay) {
+                            node.autoplay = false;
+                            node.pause();
+                            console.log('🚫 Blocked autoplay media:', node.src);
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// Auto-stop any unwanted speech on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Stop any auto-playing speech immediately
+    stopSpeech();
+    
+    // Initialize meditation audio blocker
+    blockMeditationAudio();
+    
+    // Prevent auto-speech on various events
+    window.addEventListener('focus', stopSpeech);
+    window.addEventListener('blur', stopSpeech);
+    window.addEventListener('load', stopSpeech);
+    window.addEventListener('beforeunload', stopSpeech);
+    
+    // Stop speech every 5 seconds as a safety measure
+    setInterval(() => {
+        if (speechSynthesis.speaking && !document.querySelector('.user-initiated-speech')) {
+            console.log('🔇 Safety stop - detected unwanted speech');
+            stopSpeech();
+        }
+    }, 5000);
+});
 
 // Add keyboard navigation for accessibility
 document.addEventListener('keydown', (e) => {
